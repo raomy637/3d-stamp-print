@@ -47,6 +47,8 @@ def main(argv=None):
     ap.add_argument("--count", type=int, default=3, help="一排几个（默认 3）")
     ap.add_argument("--gap", type=float, default=10.0, help="件间距 mm")
     ap.add_argument("--segments", type=int, default=96)
+    ap.add_argument("--style", choices=["dome", "straight", "column"], default="straight",
+                    help="手柄形状，默认定稿款 straight（柄 φ10 / 底盘 φ15）")
     ap.add_argument("--name", default="handle_layer", help="放在 print/test/<name>/")
     args = ap.parse_args(argv)
 
@@ -54,7 +56,7 @@ def main(argv=None):
     out_dir.mkdir(parents=True, exist_ok=True)
     stl = out_dir / f"layer_{args.count}.stl"
 
-    one = mh.make_handle(segments=args.segments)
+    one = mh.revolve(mh.STYLES[args.style], segments=args.segments)
     mesh, grid = mh.layout_batch(one, args.count, gap=args.gap, cols=args.count)
     mesh.export(str(stl))
 
