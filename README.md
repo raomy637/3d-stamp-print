@@ -18,7 +18,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 
 ## 版本与备份
 
-本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）。跑完一轮留档：`git add -A` → `git commit -m "改了什么"` → `git push`。`.gitignore` 只排除缓存、探针副本、切片产物与 OpenSCAD 便携版；STL 与 `model.html` 都入库，克隆即得完整可打状态。
+本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）；跑完一轮 `git add -A` → `git commit -m "改了什么"` → `git push`。`.gitignore` 只排除缓存、探针副本、切片产物与两版 OpenSCAD 便携包（2021.01 / nightly）；STL 与 `model.html` 都入库，克隆即得完整可打状态。
 
 ## 文件
 
@@ -44,10 +44,9 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 ## 它做的事
 
 ```
-线稿 PNG ─► 二值化/去噪 ─► 外框识别 ─► 线宽体检 ─► 矢量化(含孔洞) ─► 镜像 X ─► 缩放到 --size ─► 居中
-              └─► 外框 → 底面轮廓（异形边自动继承）
-                            ├─► 2D 布尔 + 挤出（OpenSCAD/CGAL，可回退 trimesh）─► 底模 STL（水密）
-                            └─► 同轮廓 buffer(墙/翼缘) ─► 外表面收成刃口 ─► 边框 STL（水密）
+线稿 PNG ─► 二值化/去噪 ─► 外框识别 → 底面轮廓 ─► 线宽体检 ─► 矢量化(含孔洞) ─► 镜像 X ─► 缩放到 --size ─► 居中
+     ├─► 2D 布尔 + 挤出（OpenSCAD nightly / Manifold，可回退 mesh）─► 底模 STL（水密）
+     └─► 同轮廓 buffer(墙/翼缘) ─► 外表面收成垂直刃口 ─► 边框 STL（水密）
 ```
 
 | 关键点    | 说明                                                |
@@ -70,9 +69,8 @@ python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-ear
 
 ```
 # 1) 底模 + 边框：成品 85mm，浮雕 1.8mm，附带分层 SVG 和预览图
-python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_v3 --size 85 --relief 1.8 --svg
-#    → print\jobs\bakers_v3\base.stl（底模，可打印）  print\jobs\bakers_v3\cutter.stl（边框，可打印）
-#    → out\bakers_v3\（MANIFEST.md / report.json / preview.png / lines.svg）
+python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_v5 --size 85 --relief 1.8 --svg
+#    → print\jobs\bakers_v5\{base,cutter}.stl（能打印）  out\bakers_v5\（MANIFEST / report / preview / lines.svg）
 # 成品图案要凸起（凹模）：加 --relief-mode sink（默认带 5° 脱模锥度）
 python src\stamp_pipeline.py --input 图案.png --out out\xxx --relief-mode sink
 python src\stamp_pipeline.py --input 图案.png --out out\xxx --no-cutter          # 只要底模不要边框
@@ -100,9 +98,6 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 
 批量清单是 CSV（`item,input,size,relief,mode` 五列，缺省 85 / 1.8 / raise），单号只管起名，路径由脚本拼：**每套的底模和边框一定落在同一个单号目录里**——`print/jobs/<批次>/<单号>/{base,cutter}.stl`，记录在 `out/<批次>/<单号>/`，批次总表是 `out/<批次>/INDEX.md`（配对、成品尺寸、面数、水密、耗时一行一套）。实测 i5-13400 / 8 路并行：**10 套 51s、40 套 96s**（单套 2.4s，比串行快 5 倍）。命名规则、失败处理与提速原理见 [guides/batch.md](guides/batch.md)。
 
-
-产出分两处：`print/` 只放可打印 `.stl`（`standard/` 标准件、`jobs/<job>/` 这一单、`test/` 试打件），`out/<job>/` 放给人看的记录。细节见 [guides/output-layout.md](guides/output-layout.md)。
-
 ## 参数
 
 | 参数                     | 默认         | 说明                                                        |
@@ -111,8 +106,8 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 | `--base-thickness`     | 3.0        | 底板厚度 mm                                                   |
 | `--relief`             | 1.8        | 图案凸起高度 / 凹模槽深 mm。粘土 1.5–2.0 最合适，再高压变形                     |
 | `--relief-mode`        | raise      | `raise`= 印章（成品凹线）；`sink`= 凹模（成品凸起，带脱模锥度）                  |
-| `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/CGAL；`mesh`= 旧 trimesh 路径（快 4 倍，作回退） |
-| `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s vs `scad` 115s，默认固定 mesh                 |
+| `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/nightly Manifold（默认，渲染 1s）；`mesh`=旧 trimesh（回退用） |
+| `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s 水密；`scad` nightly 0.4s 但非水密，固定 mesh |
 | `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（会拽断细线）；阶梯段数由 `--cavity-segments` 控制 |
 | `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                          |
 | `--cutter-wall`        | 1.2        | 主体墙厚 mm，参考区间 0.8–1.2；≥1.5 会挤压面团                              |
@@ -124,6 +119,8 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 | `--cutter-clearance`   | 0.4        | 底模与边框内腔的单边间隙 mm（行业标准值）                                    |
 | `--no-cutter`          | 关          | 不出边框 STL                                                  |
 | `--print-dir`          | print      | 可打印 STL 落到哪个目录                                            |
+| `--job`                | `--out` 末段 | 打印目录里的单号；批量时写 `批次/单号`（落两级目录）                          |
+| `--no-index`           | 关          | 跳过刷新 PRINT.md（批量并行时用，批次结束刷一次）                            |
 | `--rim-w` / `--rim-h`  | 0 / 0.4    | 旧的一体式凸边缘（淘汰写法，>0 时与独立边框互斥）                                |
 | `--min-stroke`         | 0          | 最小线宽 mm。0.4 喷嘴填 0.9，0.2 喷嘴填 0.55                          |
 | `--grow`               | 0          | 图案整体外扩 mm，慎用（会让字糊在一起）                                     |
@@ -140,22 +137,16 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 
 ## 手柄：独立标准件，一次打一批
 
-手柄不跟底模一起出。底模是每张图都要重做的，手柄是一套配所有的零件，所以由 `make_handle.py` 单独出、尺寸定死、批量打印：
-
 | 项  | 值                                 |
 | -- | --------------------------------- |
-| 底盘 | φ15 × 1.5mm（粘接面 176.7mm²，502 一薄圈就够） |
-| 握柄 | φ10 直筒，直角台阶从底盘起，顶 R3 圆角（留 φ4 平顶） |
-| 总高 | 25mm（小把手，捏着按，不占地方）                |
-| 网格 | 1,344 面，水密，2.05 cm³/ 个            |
+| 底盘 / 握柄 | φ15 × 1.5mm 底盘（粘接面 176.7mm²）；φ10 直筒，直角台阶起，顶 R3 圆角（留 φ4 平顶） |
+| 总高 / 网格 | 25mm（捏着按，不占地方）；1,344 面，水密，2.05 cm³/ 个 |
 
-为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
+底模每张图都要重做，手柄是一套配所有图案的零件：一体打印且图案朝上时手柄必然悬空要支撑，主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面；分件还能换图案不重打手柄、坏一个只补一个。粘接：两平面酒精擦净 → 底模背面中心涂一圈 502 → 底盘压上保持 30 秒。
 
-手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。**定稿款&#x20;**`straight`**：握柄 φ10 + 底盘 φ15 + 高 25 + 顶 R3**，斜面占比 7.7%、1,344 面、2.05cm³。`dome`（61.6%）与 `column`（9.3%）只作留档对照，不再投产。批量用 `--count 6/12`，出盘建议 `--cols 6`（130×38 更稳）。
+剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。**定稿款&#x20;**`straight`**：握柄 φ10 + 底盘 φ15 + 高 25 + 顶 R3**，斜面占比 7.7%。`dome`（61.6%）与 `column`（9.3%）只作留档，不投产；批量用 `--count 6/12`，出盘 `--cols 6`（130×38 更稳）。
 
 ## 边框：独立切模
-
-边框不跟底模连在一起。它只有一圈 1.2mm 的墙 + 0.4mm 刃口，负责切出粘土外形；底模负责压图案。两件靠 0.4mm 环隙对位。
 
 | 项       | 值                                     |
 | ------- | ------------------------------------- |
@@ -165,7 +156,7 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 | 翼缘      | 4.0 × 1.6mm，贴床防翘 + 翻过来当握边             |
 | 网格      | 95.4×95.4×12mm、17.7k 面、水密、5.32 cm³     |
 
-使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
+边框与底模不连在一起：边框只有一圈 1.2mm 墙 + 0.4mm 垂直薄刃，负责切出粘土外形；底模负责压图案，两件靠 0.4mm 环隙对位。使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
 
 ## 打印朝向与切片
 
@@ -174,13 +165,11 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 
 ## 3D 预览（HTML，离线可转）
 
-`src/viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
+`src/viewer/make_viewer.py` 把 STL 打包成单文件 HTML：three.js 全部内联、网格量化成 uint16，双击即开不联网；默认就是**叠放装配视图**（边框套过底模、四周 0.4mm 缝可见），按钮可切装配 / 分离 / 自动旋转 / 俯视 / 侧视 / 背面。当前：`out\bakers_v5\model.html`（凸模）、`out\bakers_cav\model.html`、`out\2026-11-24_xmas_pair\<单号>\model.html`（批量两套）。
 
 ```
-python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_straight.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
+python src\viewer\make_viewer.py --stl print\jobs\bakers_v5\base.stl --cutter print\jobs\bakers_v5\cutter.stl --handle print\standard\handle_straight.stl --report out\bakers_v5\report.json --out out\bakers_v5\model.html
 ```
-
-当前几套都已生成：双击 `out\bakers_v5\model.html`（凸模最新）、`out\bakers_cav\model.html`（凹模）。打开默认就是**叠放装配视图**（近俯视，边框套住底模，四周一圈 0.4mm 缝一眼可见）；底部按钮：装配 / 分离 / 自动旋转 / 俯视 / 侧视 / 背面（侧视看厚度、背面看粘接面）。
 
 ## 已知限制
 

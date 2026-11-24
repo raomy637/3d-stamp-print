@@ -2,6 +2,14 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.8 · 2026-11-25 · 文档治理（Superpowers Plus 02 口径）＋ 补记 v11.7
+
+- 体积对齐红线：入口 `SKILL.md` 126 → **108**（≤120）；索引 `README.md` 191 → **180**（≤200）。两者都正好压在 90% 预警线，下一条内容必须先拆再写。细节层：`openscad.md` 117、`output-layout.md` 106、`batch.md` 91，全部 ≤300。
+- 单一事实来源：删掉 `SKILL.md` 里整张「参数默认值」表（与 README「参数」节重复），改成一条指针 + 三条不许破的口径（手柄只 straight / 刃口只 vertical / 边框引擎固定 mesh）；删掉 `SKILL.md` 里三条 OpenSCAD 坑的复述，改为指向 `guides/openscad.md`。
+- 过期内容扫描（搜 `bakers_v3` / `handle_slim` / `φ14` / `1,728` / `2.03`）命中并修：`guides/openscad.md` 实测表改成 **nightly 为默认**（底模 1.0s vs 21.9s、边框 114.7s），补两个坑（nightly 出的边框非水密、2021.01 不认 `--enable=fast-csg`）；`guides/output-layout.md` 补批量两级目录与 `out/<批次>/`，命名表换 `handle_straight*`，示例从已归档的 v3 换成 v5；`guides/parts.md`、`guides/printing.md` 手柄尺寸 φ14→φ15、124×14→130×15、2.03→2.05 cm³。
+- 引用完整性：README 指向的 7 个 guides、4 个 tools 脚本、关键 STL 与 model.html 逐个 `Test-Path`，全部存在，无幽灵引用。
+- 补记 v11.7 的行为：`batch_molds.py` 比对边框 STL 的 sha256，同形边框在 `INDEX.md` 标「同 `X`，不必重复打」（文件保留，索引仍认配对），避免一批 40 套白打几十个一模一样的边框。
+
 ## v11.6 · 2026-11-24 · 批量出模（10–40 套）+ 性能压到 40 套 96 秒
 
 - 新增 `src/batch_molds.py`：读 CSV 清单（`item,input,size,relief,mode`），并行 N 路跑 `stamp_pipeline`，一套一个子进程。实测 i5-13400 / 8 路：**10 套 51s、40 套 96s**（40/40 成功、40/40 水密、40/40 配对齐全）。
