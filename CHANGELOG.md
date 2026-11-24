@@ -2,6 +2,12 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v8 · 2026-11-24 · 纳入 Git，备份到 GitHub 私有仓库
+
+- 本项目此前没有版本管理（`git status` 报 not a repository），改文档只能整份重写来兜底。现在 `git init -b main`，首个提交 53 个文件 / 12.5 MiB，远端为私有仓库 `raomy637/3d-stamp-print`（SSH，`origin/main` 已跟踪）。
+- 新增 `.gitignore`：排除 `__pycache__`、`*.pyc`、`_p_*.html` / `probe_*.html` 探针副本、`.vscode`、`*.gcode` / `*.3mf`。STL 与 `model.html` 故意入库——克隆即得完整可打状态。
+- 之前踩的"无 git 可回滚"的坑自此关闭：Markdown 改坏了可以直接 `git checkout`。
+
 ## v7 · 2026-11-24 · 打包成 Skill（clay-stamp-mold）
 
 - 流程不再只活在这个仓库里：新建 Skill `clay-stamp-mold`（路径 `workspace/.user_skills/clay-stamp-mold`），描述里写死了触发语（粘土印章/饼干模具/曲奇切模/线稿转 STL/底模边框手柄/尺寸与打印参数），下次说"做张模具"就会自动路由过来。

@@ -8,6 +8,21 @@
 
 整套流程也打包成了 Skill：`clay-stamp-mold`（装在 workspace 的 `.user_skills` 下），一条 `scripts/run_job.py --input 图 --job 名字` 就能跑完出件、3D 预览、手柄补料和打印清单体检。
 
+## 版本与备份
+
+本地是 git 仓库，远端是私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)，走 SSH（本机 `~/.ssh/id_ed25519`）。
+
+每次跑完一轮、想留档时：
+
+```
+git add -A
+git commit -m "改了什么"
+git push
+```
+
+`.gitignore` 排除 `__pycache__`、`_p_*.html` 等探针副本、`*.gcode` / `*.3mf`（切片产物）。STL 与 `model.html` 都入库，所以克隆下来就是完整的可打状态，不用重跑。
+
+
 ## 文件
 
 
