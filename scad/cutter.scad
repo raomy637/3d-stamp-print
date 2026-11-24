@@ -21,6 +21,7 @@ edge_h   = is_undef(edge_h)   ? 3.0  : edge_h;
 flange_w = is_undef(flange_w) ? 4.0  : flange_w;
 flange_t = is_undef(flange_t) ? 1.6  : flange_t;
 edge_seg = is_undef(edge_seg) ? 8    : edge_seg;
+edge_mode = is_undef(edge_mode) ? "vertical" : edge_mode;
 
 module __ring(h, outer) {
     linear_extrude(height = h, convexity = 10)
@@ -33,10 +34,15 @@ module __ring(h, outer) {
 module cutter_body() {
     union() {
         __ring(height - edge_h, wall);
-        for (i = [0 : edge_seg - 1]) {
-            outer = wall + (edge - wall) * (i + 1) / edge_seg;
-            translate([0, 0, height - edge_h + i * edge_h / edge_seg])
-                __ring(edge_h / edge_seg + (i == edge_seg - 1 ? 0.001 : 0), outer);
+        if (edge_mode == "vertical") {
+            // 外壁一次性收薄到 edge，然后整段垂直：内壁不动、侧面零斜面
+            translate([0, 0, height - edge_h]) __ring(edge_h, edge);
+        } else {
+            for (i = [0 : edge_seg - 1]) {
+                outer = wall + (edge - wall) * (i + 1) / edge_seg;
+                translate([0, 0, height - edge_h + i * edge_h / edge_seg])
+                    __ring(edge_h / edge_seg + (i == edge_seg - 1 ? 0.001 : 0), outer);
+            }
         }
         __ring(flange_t, wall + flange_w);
     }

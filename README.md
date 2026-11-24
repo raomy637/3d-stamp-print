@@ -2,7 +2,7 @@
 
 一张线稿 → 可直接切片的粘土饼干模具 STL。换图案只改 `--input`，其余参数复用。
 
-三件分体：边框（切粘土外形）/ 底模（压图案）/ 手柄（定尺寸批量打）。尺寸链与依据见 [guides/parts.md](guides/parts.md)。建体默认走 OpenSCAD（2D 轮廓交给 CGAL），边框保留 trimesh 快路径；两条路一键切换，理由与实测见 [guides/openscad.md](guides/openscad.md)。
+三件分体：边框（切粘土外形）/ 底模（压图案）/ 手柄（单独打，**任何可打印件里都不带把手**）。尺寸链与依据见 [guides/parts.md](guides/parts.md)。建体默认走 OpenSCAD（2D 轮廓交给 CGAL），边框保留 trimesh 快路径；两条路一键切换，理由与实测见 [guides/openscad.md](guides/openscad.md)。
 
 输出怎么找：能打印的 `.stl` 全在 `print/`，其余看 `out/<图案>/`，总表是根目录 `PRINT.md`（自动生成）。**每次出件必配一份自包含 3D 预览 html**（模具 `out/<图案>/model.html`、手柄 `out/handles/<件名>.html`，离线双击即开）。约定见 [guides/output-layout.md](guides/output-layout.md)。
 
@@ -11,8 +11,6 @@
 ## 凸模还是凹模
 
 默认出凸模（印章）：图案凸起，压到粘土上得到凹线。加 `--relief-mode sink` 就出凹模：图案沉成带 5° 脱模锥度的槽，压出来的成品图案是**凸**的。边框和手柄两套共用，只换底模；原理、锥度取值、深度上限与坑见 [guides/cavity.md](guides/cavity.md)。
-
-
 
 ```
 python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 --relief 1.8 --relief-mode sink
@@ -24,8 +22,6 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 
 ## 文件
 
-
-
 | 路径                             | 作用                                                                                                                           |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | `src/stamp_pipeline.py`        | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                                                                                     |
@@ -33,7 +29,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | `scad/`                        | 参数化模板：`base.scad` / `cutter.scad` / `handle.scad`                                                                            |
 | `src/make_handle.py`           | 手柄 STL（可 `--count` 联排，一次打一批）                                                                                                 |
 | `src/make_print_index.py`      | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                                                                                            |
-| `src/viewer/make_viewer.py`    | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                                                                                            |
+| `src/viewer/make_viewer.py`    | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄；默认叠放装配视角）                                                                                            |
 | `src/tools/`                   | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图・`preview_handle_styles.py` 三款剖面・`handle_compare_board.py` 手感对比板 |
 | `print/standard/`              | 定稿可复用的标准件（手柄）                                                                                                                |
 | `print/jobs/<job>/`            | 这一单的模具：`base.stl` + `cutter.stl`                                                                                             |
@@ -46,16 +42,12 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 
 ## 它做的事
 
-
-
 ```
 线稿 PNG ─► 二值化/去噪 ─► 外框识别 ─► 线宽体检 ─► 矢量化(含孔洞) ─► 镜像 X ─► 缩放到 --size ─► 居中
               └─► 外框 → 底面轮廓（异形边自动继承）
                             ├─► 2D 布尔 + 挤出（OpenSCAD/CGAL，可回退 trimesh）─► 底模 STL（水密）
                             └─► 同轮廓 buffer(墙/翼缘) ─► 外表面收成刃口 ─► 边框 STL（水密）
 ```
-
-
 
 | 关键点    | 说明                                                |
 | ------ | ------------------------------------------------- |
@@ -67,8 +59,6 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 
 ## 安装依赖
 
-
-
 ```
 python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-earcut manifold3d
 ```
@@ -76,8 +66,6 @@ python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-ear
 `--engine scad` 还要 OpenSCAD 2021.01（约 43MB，不进 git）：放 `tools\openscad\`、设 `OPENSCAD_BIN`、或装进 PATH 三者任一；找不到会自动回退 mesh 并给出提示。
 
 ## 用法
-
-
 
 ```
 # 1) 底模 + 边框：成品 85mm，浮雕 1.8mm，附带分层 SVG 和预览图
@@ -109,8 +97,6 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 ## 参数
 
-
-
 | 参数                     | 默认         | 说明                                                        |
 | ---------------------- | ---------- | --------------------------------------------------------- |
 | `--size`               | 85         | 成品外形 = 边框内腔 mm；底模自动内缩 2×`cutter_clearance`                |
@@ -119,13 +105,13 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 | `--relief-mode`        | raise      | `raise`= 印章（成品凹线）；`sink`= 凹模（成品凸起，带脱模锥度）                  |
 | `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/CGAL；`mesh`= 旧 trimesh 路径（快 4 倍，作回退） |
 | `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s vs `scad` 115s，默认固定 mesh                 |
-| `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（脱模会拽断细线）                               |
-| `--cavity-segments`    | 4          | 凹模锥面阶梯段数；8 更顺、面数翻倍                                        |
+| `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（会拽断细线）；阶梯段数由 `--cavity-segments` 控制 |
 | `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                          |
-| `--cutter-wall`        | 1.2        | 边框墙厚 mm（0.4 喷嘴下正好 3 圈实心）                                  |
+| `--cutter-wall`        | 1.2        | 主体墙厚 mm，参考区间 0.8–1.2；≥1.5 会挤压面团                              |
 | `--cutter-height`      | 12         | 边框总高 mm（行业 12–15，粘土取 12）                                  |
-| `--cutter-edge`        | 0.4        | 刃口厚度 mm（0.4–0.5 才切得动）                                     |
-| `--cutter-edge-h`      | 3.0        | 刃口锥段高度 mm（外表面向上收窄）                                        |
+| `--cutter-edge`        | 0.4        | 刃口薄壁厚度 mm = 1 条 0.4 线宽                                     |
+| `--cutter-edge-mode`   | vertical   | 刃口形态：`vertical` 外壁一次收薄后垂直到底（零斜面）；`taper` 旧 8 段阶梯（已弃）  |
+| `--cutter-edge-h`      | 3.0        | 薄刃段高度 mm（翻转后就是切进粘土的深度）                                    |
 | `--cutter-flange-w/-t` | 4.0 / 1.6  | 底部翼缘宽 / 厚 mm（贴床防翘 + 翻过来当握边）                               |
 | `--cutter-clearance`   | 0.4        | 底模与边框内腔的单边间隙 mm（行业标准值）                                    |
 | `--no-cutter`          | 关          | 不出边框 STL                                                  |
@@ -148,8 +134,6 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 手柄不跟底模一起出。底模是每张图都要重做的，手柄是一套配所有的零件，所以由 `make_handle.py` 单独出、尺寸定死、批量打印：
 
-
-
 | 项  | 值                                 |
 | -- | --------------------------------- |
 | 底盘 | φ14 × 1.4mm（粘接面 154mm²，502 一薄圈就够） |
@@ -165,15 +149,13 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 边框不跟底模连在一起。它只有一圈 1.2mm 的墙 + 0.4mm 刃口，负责切出粘土外形；底模负责压图案。两件靠 0.4mm 环隙对位。
 
-
-
 | 项       | 值                                     |
 | ------- | ------------------------------------- |
 | 内腔      | `--size`（= 切出来的粘土尺寸）                  |
-| 墙厚 / 总高 | 1.2 / 12mm（翼缘 1.6 → 主体到 9 → 刃口锥段到 12） |
-| 刃口      | 0.4mm，外表面收窄，内腔全程不缩                    |
+| 墙厚 / 总高 | 1.2 / 12mm（翼缘 1.6 → 主体到 9 → 垂直薄刃到 12） |
+| 刃口      | 0.4mm 垂直薄壁，内壁和外壁都不收，零斜面（`--cutter-edge-mode vertical`） |
 | 翼缘      | 4.0 × 1.6mm，贴床防翘 + 翻过来当握边             |
-| 网格      | 95.4×95.4×12mm、58.9k 面、水密、5.6 cm³     |
+| 网格      | 95.4×95.4×12mm、17.7k 面、水密、5.32 cm³     |
 
 使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
 
@@ -181,27 +163,21 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 底模平板贴床、图案（或凹槽）朝上、追求平整印面用光面 / 玻璃板（纹理 PEI 会把纹路翻印到印面）；边框翼缘贴床、刃口朝上，打完翻过来用；手柄底盘贴床直立。三件都免支撑。切片：底模 0.2 喷嘴 / 0.10 层高 / 4 墙 / 顶面熨烫，只有 0.4 喷嘴时先加 `--min-stroke 0.9`；边框与手柄的层高、brim、后处理见 [guides/printing.md](guides/printing.md)。
 
-旧的一体式 `--rim-w`（外沿凸起一道随底板走的墙）保留但默认关闭：它和独立边框互斥，换图案就得重打那道墙，属于被淘汰的写法。
 
 ## 3D 预览（HTML，离线可转）
 
 `src/viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
 
-
-
 ```
 python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_straight.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
 ```
 
-当前两套都已生成：双击 `out\bakers_v3\model.html`（凸模）、`out\bakers_cav\model.html`（凹模）。界面左上角是参数面板（尺寸 / 槽深 / 是否镜像），底部按钮：分离 / 装配 / 自动旋转 / 俯视 / 侧视 / 背面（俯视验镜像、侧视看厚度、背面看粘接面）。
+当前几套都已生成：双击 `out\bakers_v5\model.html`（凸模最新）、`out\bakers_cav\model.html`（凹模）。打开默认就是**叠放装配视图**（近俯视，边框套住底模，四周一圈 0.4mm 缝一眼可见）；底部按钮：装配 / 分离 / 自动旋转 / 俯视 / 侧视 / 背面（侧视看厚度、背面看粘接面）。
 
 ## 已知限制
-
-
 
 | 限制          | 现状                                                                                       |
 | ----------- | ---------------------------------------------------------------------------------------- |
 | 边框与底模无机械限位  | 靠人手对位 + 0.4mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                                                  |
-| 刃口锥段是台阶近似   | 8 段分层而非真斜面，0.16 层高下能看出轻微台阶，不影响切割                                                         |
-| 手柄无定位销      | φ14 平面粘接，手涂 502 容易粘偏（粘接面只有 154mm²，别把胶涂到边缘外）                                              |
+| 手柄无定位销      | φ15 平面粘接，手涂 502 容易粘偏（粘接面 176.7mm²，别把胶涂到边缘外）                                              |
 | 外框识别 / 重叠部件 | 外框靠 "铺满整图 + 闭合环" 判，四边装饰不闭合时用 `--frame-mode ignore` 兜底；`unary_union` 会合并重叠图案，近而不接的保留为独立浮雕 |

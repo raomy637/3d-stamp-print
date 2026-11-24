@@ -120,7 +120,7 @@ TEMPLATE = """<!doctype html>
 <div id="badge">__BADGE__</div>
 
 <div id="bar">
-  <button id="bMode" class="on">分离视图</button>
+  <button id="bMode" class="on">装配视图</button>
   <button id="bSpin">自动旋转</button>
   <button id="bTop">俯视</button>
   <button id="bSide">侧视</button>
@@ -210,7 +210,7 @@ __GEO__
   // 手柄高（用于装配位）
   const knobH = KNOB.bb[4] - KNOB.bb[1];
 
-  let mode = 'split';
+  let mode = 'assembled';
   let hideKnob = false;   // 侧视时把手柄藏掉，否则正好挡住章体盘沿
 
   function applyMode(){
@@ -236,7 +236,7 @@ __GEO__
   // ---- 相机
   const box = new THREE.Box3();
   let sphere = new THREE.Sphere(new THREE.Vector3(), 1);
-  let view = {az: 1.28, el: 0.34, dist: 200};
+  let view = {az: 1.15, el: 0.95, dist: 200};
 
   function updateBounds(){
     group.updateMatrixWorld(true);
@@ -279,9 +279,9 @@ __GEO__
     bMode.textContent = (mode === 'split' ? '分离视图' : '装配视图');
     hideKnob = false;
     applyMode();
-    // 装配后手柄在章体背面，从侧后方看才看得见
-    view.el = (mode === 'split' ? 0.34 : 0.42);
-    view.az = (mode === 'split' ? 1.28 : -1.05);
+    // 装配后默认近俯视：一眼看到边框与底模之间那圈 0.4mm 缝隙
+    view.el = (mode === 'split' ? 0.34 : 0.95);
+    view.az = (mode === 'split' ? 1.28 : 1.15);
     refresh();
   };
 
@@ -302,7 +302,7 @@ __GEO__
   document.getElementById('bSide').onclick = function(){ goTo(0.05, 0.35, false); };
   // 背面 = 装配态从后方看：底板背面 + 粘上去的手柄 + 边框外壁
   document.getElementById('bBack').onclick = function(){
-    mode = 'asm'; applyMode();
+    mode = 'assembled'; applyMode();
     goTo(0.30, -1.75, false);
   };
 

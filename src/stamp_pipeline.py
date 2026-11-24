@@ -571,12 +571,16 @@ def write_svg(base, pattern, bounds, out_svg: Path):
 
 
 def build_cutter(inner, wall=1.2, height=12.0, edge=0.4, edge_h=3.0,
-                 flange_w=4.0, flange_t=1.6):
+                 flange_w=4.0, flange_t=1.6, edge_mode="vertical"):
     """边框（切模）：内腔固定不动，外表面向上收成刃口。
 
     打印朝向 = 翼缘贴床（z=0）、刃口在顶；打完翻过来就是
     刃口朝下切粘土、翼缘朝上可以手掌压。
     内腔全程不缩，所以切出来的尺寸恒等于 inner。
+
+    edge_mode:
+      vertical —— 刃口段外壁一次性收薄到 edge 后垂直到底（零斜面，推荐）
+      taper    —— 旧做法，8 段阶梯近似锥面，侧面看得出台阶
     """
     top = max(height - edge_h, flange_t + 0.4)
     parts = []
@@ -588,13 +592,17 @@ def build_cutter(inner, wall=1.2, height=12.0, edge=0.4, edge_h=3.0,
         body = inner.buffer(wall, join_style="round").difference(inner)
         parts.append(extrude(body, flange_t, top, "cutter-wall"))
 
-    n = 8                                  # 刃口锥度分 8 段近似，避免明显的台阶
-    for k in range(n):
-        z0 = top + edge_h * k / n
-        z1 = top + edge_h * (k + 1) / n
-        w = wall + (edge - wall) * (k + 1) / n
-        ring = inner.buffer(w, join_style="round").difference(inner)
-        parts.append(extrude(ring, z0, z1, f"cutter-edge{k}"))
+    if height > top and edge_mode == "vertical":
+        ring = inner.buffer(edge, join_style="round").difference(inner)
+        parts.append(extrude(ring, top, height, "cutter-edge"))
+    else:
+        n = 8                              # 旧：刃口锥度分 8 段近似
+        for k in range(n):
+            z0 = top + edge_h * k / n
+            z1 = top + edge_h * (k + 1) / n
+            w = wall + (edge - wall) * (k + 1) / n
+            ring = inner.buffer(w, join_style="round").difference(inner)
+            parts.append(extrude(ring, z0, z1, f"cutter-edge{k}"))
 
     m = safe_union(parts)
     if m is None:
@@ -707,7 +715,10 @@ def main(argv=None):
     ap.add_argument("--cutter-edge", type=float, default=0.4,
                     help="刃口厚度 mm（翻转后朝下切粘土那面）")
     ap.add_argument("--cutter-edge-h", type=float, default=3.0,
-                    help="刃口锥度段高度 mm")
+                    help="刃口薄壁段高度 mm（该段整段都是 --cutter-edge 这么厚）")
+    ap.add_argument("--cutter-edge-mode", choices=["vertical", "taper"], default="vertical",
+                    help="刃口形态：vertical=外壁一次性收薄后垂直到底（默认，零斜面、侧面对比干净）；"
+                         "taper=旧 8 段阶梯锥面（侧面有台阶，不推荐）")
     ap.add_argument("--cutter-flange-w", type=float, default=4.0,
                     help="底部翼缘外扩宽 mm（贴床防翘、翻过来当握边）")
     ap.add_argument("--cutter-flange-t", type=float, default=1.6,
@@ -992,7 +1003,8 @@ def main(argv=None):
                 scad_file, cutter_stl_path,
                 defs=dict(wall=args.cutter_wall, height=args.cutter_height,
                           edge=args.cutter_edge, edge_h=args.cutter_edge_h,
-                          flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t))
+                          flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t,
+                          edge_mode=args.cutter_edge_mode))
             if ok:
                 cm = trimesh.load(str(cutter_stl_path))
                 log(f"  [i] 边框引擎：OpenSCAD（渲染 {cut_secs:.1f}s）")
@@ -1002,7 +1014,8 @@ def main(argv=None):
             cm = build_cutter(inner_geom,
                               wall=args.cutter_wall, height=args.cutter_height,
                               edge=args.cutter_edge, edge_h=args.cutter_edge_h,
-                              flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t)
+                              flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t,
+                              edge_mode=args.cutter_edge_mode)
         if cm is not None and len(cm.faces) > 0:
             cutter_stl = cutter_stl_path
             cm.export(str(cutter_stl))
@@ -1013,6 +1026,7 @@ def main(argv=None):
                                   round(float(inner_geom.bounds[3] - inner_geom.bounds[1]), 2)],
                 "wall_mm": args.cutter_wall, "height_mm": args.cutter_height,
                 "edge_mm": args.cutter_edge, "edge_h_mm": args.cutter_edge_h,
+                "edge_mode": args.cutter_edge_mode,
                 "flange_mm": [args.cutter_flange_w, args.cutter_flange_t],
                 "clearance_mm": clr,
                 "triangles": int(len(cm.faces)),
