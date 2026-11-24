@@ -13,7 +13,7 @@
 默认出凸模（印章）：图案凸起，压到粘土上得到凹线。加 `--relief-mode sink` 就出凹模：图案沉成带 5° 脱模锥度的槽，压出来的成品图案是**凸**的。边框和手柄两套共用，只换底模；原理、锥度取值、深度上限与坑见 [guides/cavity.md](guides/cavity.md)。
 
 ```
-python stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 --relief 1.8 --relief-mode sink
+python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 --relief 1.8 --relief-mode sink
 ```
 
 ## 版本与备份
@@ -28,14 +28,16 @@ python stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav -
 
 | 路径                              | 作用                                                      |
 | ------------------------------- | ------------------------------------------------------- |
-| `stamp_pipeline.py`             | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                |
-| `make_handle.py`                | 手柄 STL（可 `--count` 联排，一次打一批）                            |
-| `make_print_index.py`           | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                       |
-| `print/`                        | 唯一能直接拿去切片的地方，只放 `.stl`                                  |
-| `out/<图案>/`                     | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                      |
-| `out/handles/` `out/_archive/`  | 手柄体检图 / 淘汰件留档                                           |
-| `viewer/make_viewer.py`         | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                       |
-| `tools/preview_handle_batch.py` | 画手柄联排俯视图                                                |
+| `src/stamp_pipeline.py`         | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                |
+| `src/make_handle.py`            | 手柄 STL（可 `--count` 联排，一次打一批）                            |
+| `src/make_print_index.py`       | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                       |
+| `src/viewer/make_viewer.py`     | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                       |
+| `src/tools/`                    | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图 |
+| `print/standard/`               | 定稿可复用的标准件（手柄）                                          |
+| `print/jobs/<job>/`             | 这一单的模具：`base.stl` + `cutter.stl`                          |
+| `print/test/`                   | 试打、层高对比、实验件，随时可删                                       |
+| `out/<job>/`                    | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                      |
+| `out/handles/` `out/_archive/`  | 手柄体检图与对比记录 / 淘汰件留档                                     |
 | `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`output-layout.md` 输出约定 |
 | `inputs/`                       | 源图                                                      |
 | `CHANGELOG.md`                  | 版本变更与决策记录                                               |
@@ -75,29 +77,29 @@ python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-ear
 
 ```
 # 1) 底模 + 边框：成品 85mm，浮雕 1.8mm，附带分层 SVG 和预览图
-python stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_v3 --size 85 --relief 1.8 --svg
-#    → print\bakers_v3_base.stl（底模，可打印）  print\bakers_v3_cutter.stl（边框，可打印）
+python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_v3 --size 85 --relief 1.8 --svg
+#    → print\jobs\bakers_v3\base.stl（底模，可打印）  print\jobs\bakers_v3\cutter.stl（边框，可打印）
 #    → out\bakers_v3\（MANIFEST.md / report.json / preview.png / lines.svg）
-# 只要底模不要边框
-python stamp_pipeline.py --input 图案.png --out out\xxx --no-cutter
-# 没有外框的图：底面自动变成圆
-python stamp_pipeline.py --input 图案.png --out out\xxx --size 80
-# 只有 0.4 喷嘴：把所有细线统一拉到 0.9mm
-python stamp_pipeline.py --input 图案.png --out out\xxx --min-stroke 0.9
-# 不要外框、强制圆底
-python stamp_pipeline.py --input 图.png --out out\xxx --frame-mode ignore
+# 成品图案要凸起（凹模）：加 --relief-mode sink（默认带 5° 脱模锥度）
+python src\stamp_pipeline.py --input 图案.png --out out\xxx --relief-mode sink
+python src\stamp_pipeline.py --input 图案.png --out out\xxx --no-cutter          # 只要底模不要边框
+python src\stamp_pipeline.py --input 图案.png --out out\xxx --size 80            # 没有外框的图：底面自动成圆
+# 不要外框、强制圆底；只有 0.4 喷嘴时把所有细线统一拉到 0.9mm
+python src\stamp_pipeline.py --input 图.png --out out\xxx --frame-mode ignore
+python src\stamp_pipeline.py --input 图案.png --out out\xxx --min-stroke 0.9
 
-# 2) 手柄（只在换尺寸时才重跑，平时直接打 print\ 里现成的）
-python make_handle.py                      # 单个 -> print\handle_slim.stl
-python make_handle.py --count 6            # 一排 -> print\handle_x6.stl（124×14）
-python make_handle.py --count 12 --cols 6  # 一盘 -> print\handle_x12.stl（124×36）
+# 2) 手柄（标准件，只在换尺寸时才重跑；平时直接打 print\standard\ 里现成的）
+python src\make_handle.py                      # 单个 -> print\standard\handle_slim.stl
+python src\make_handle.py --count 6            # 一排 -> print\standard\handle_x6.stl（124×14）
+python src\make_handle.py --count 12 --cols 6  # 一盘 -> print\standard\handle_x12.stl（124×36）
+python src\tools\handle_layer_test.py          # 层高对比件 3 个一排 -> print\test\handle_layer\
 
 # 3) 看总表 / 体检 print\ 里能不能直接打
-python make_print_index.py                 # 刷新 PRINT.md
-python make_print_index.py --check         # 只查不改，退出码 0 = 全部可打
+python src\make_print_index.py                 # 刷新 PRINT.md
+python src\make_print_index.py --check         # 只查不改，退出码 0 = 全部可打
 ```
 
-产出分两处。`print/` 只放可打印 `.stl`（`<图案>_base` / `<图案>_cutter` / `handle_*`）；`out/<图案>/` 放给人看的东西（MANIFEST.md 清单、report.json 体检、preview.png 三栏预览、lines.svg、model.html）。布局细节见 [guides/output-layout.md](guides/output-layout.md)。
+产出分两处。`print/` 只放可打印 `.stl`，内部分三个抽屉：`standard/`（定稿可复用的标准件，例如手柄）、`jobs/<job>/`（这一单的 `base.stl` + `cutter.stl`）、`test/`（试打对比件）；`out/<job>/` 放给人看的东西（MANIFEST.md、report.json、preview.png、lines.svg、model.html）。布局细节见 [guides/output-layout.md](guides/output-layout.md)。
 
 ## 参数
 
@@ -177,11 +179,12 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 
 ## 3D 预览（HTML，离线可转）
 
-`viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
+`src/viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
 
 ```
-python viewer\make_viewer.py --stl print\bakers_v3_base.stl --cutter print\bakers_v3_cutter.stl `
-    --handle print\handle_slim.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
+python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl `
+    --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_slim.stl `
+    --report out\bakers_v3\report.json --out out\bakers_v3\model.html
 ```
 
 当前两套都已生成：双击 `out\bakers_v3\model.html`（凸模）、`out\bakers_cav\model.html`（凹模）。界面左上角是参数面板（尺寸 / 槽深 / 是否镜像），底部按钮：分离 / 装配 / 自动旋转 / 俯视 / 侧视 / 背面（俯视验镜像、侧视看厚度、背面看粘接面）。

@@ -39,7 +39,7 @@
     "lt_1.0": 1
   },
   "cutter": {
-    "file": "print\\bakers_cav_cutter.stl",
+    "file": "print\\jobs\\bakers_cav\\cutter.stl",
     "inner_size_mm": [
       85.0,
       85.0
@@ -57,6 +57,6 @@
     "watertight": true
   },
   "handle": {
-    "note": "独立标准件，见 handles/handle_slim.stl（make_handle.py）"
+    "note": "独立标准件，见 print/standard/handle_slim.stl（src/make_handle.py）"
   }
 }

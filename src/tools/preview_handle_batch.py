@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """把手柄联排 STL 画成俯视图，方便一眼确认排布和间距（不需要开切片器）。
 
-    python tools/preview_handle_batch.py               # 默认 print/handle_x6.stl -> out/handles/
-    python tools/preview_handle_batch.py print/handle_x12.stl
+    python src/tools/preview_handle_batch.py                    # 默认 print/standard/handle_x6.stl -> out/handles/
+    python src/tools/preview_handle_batch.py print/standard/handle_x12.stl
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ plt.rcParams["axes.unicode_minus"] = False
 
 
 def main():
-    root = Path(__file__).resolve().parent.parent
-    stl = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "print" / "handle_x6.stl"
+    root = Path(__file__).resolve().parent.parent.parent
+    stl = Path(sys.argv[1]) if len(sys.argv) > 1 else root / "print" / "standard" / "handle_x6.stl"
     if not stl.is_absolute():
         stl = root / stl
     out_dir = root / "out" / "handles"

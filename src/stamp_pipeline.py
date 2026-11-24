@@ -505,7 +505,7 @@ def render_side(base, base_t, relief, ppm, rim_w, rim_h, note="", sink=False):
         dr.text((10, y), d, font=_font(17), fill=(120, 210, 180))
         y += 24
 
-    dr.text((10, H - 34), note or "手柄另件：handles/handle_slim.stl（φ32 × 48）",
+    dr.text((10, H - 34), note or "手柄另件：print/standard/handle_slim.stl（φ14 × 25）",
             font=_font(15), fill=(130, 140, 155))
 
     return img
@@ -620,13 +620,14 @@ def write_manifest(job_dir: Path, job: str, report: dict, args,
          f"> 由 `stamp_pipeline.py` 自动生成（{t}），别手改。",
          f"> 输入 `{Path(args.input).name}` · 成品 {args.size}mm · {mode_txt} · "
          f"底板 {args.base_thickness}mm · 最小线宽 {args.min_stroke or '不改'}", "",
-         "## 可以直接打印（都在 `print/`）", "",
+         "## 可以直接打印（都在 `print/jobs/<job>/`）", "",
          "| 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |", "|---|---|---|---|---|---|"]
     for label, p in (("底模" if not sink else "凹模", base_stl), ("边框", cutter_stl)):
         if not p:
             continue
         size, faces, wt, vol = _probe(p)
-        L.append(f"| {label} | `print/{Path(p).name}` | {size[0]} × {size[1]} × {size[2]} | "
+        L.append(f"| {label} | `print/jobs/{Path(p).parent.name}/{Path(p).name}` | "
+                 f"{size[0]} × {size[1]} × {size[2]} | "
                  f"{faces:,} | {'✓' if wt else '×'} | {vol} |")
     if not cutter_stl:
         L.append("| 边框 | _本次没出（`--no-cutter` 或 `--rim-w>0`）_ | | | | |")
@@ -641,7 +642,7 @@ def write_manifest(job_dir: Path, job: str, report: dict, args,
           "- 底模：平板贴床、**图案朝上**，0.2 喷嘴 0.10 层高 / 4 墙 / 25% 填充 / 顶面熨烫 / 无支撑；"
           "只有 0.4 喷嘴时先加 `--min-stroke 0.9`。",
           "- 边框：**翼缘贴床、刃口朝上**，4 墙 + 4mm brim，打完翻过来用。",
-          "- 手柄：`print/handle_x12.stl`（标准件，粘在底模背面中心）。", "",
+          "- 手柄：`print/standard/handle_x12.stl`（标准件，粘在底模背面中心）。", "",
           "> 总表（跨所有图案）看根目录 `PRINT.md`；切片细节看 `guides/printing.md`。"]
     (job_dir / "MANIFEST.md").write_text("\n".join(L) + "\n", encoding="utf-8")
 
@@ -712,21 +713,22 @@ def main(argv=None):
     ap.add_argument("--no-preview", action="store_true")
     ap.add_argument("--svg", action="store_true", help="同时导出分层 SVG")
     ap.add_argument("--print-dir", default="print",
-                    help="可打印 STL 放哪（默认 print/，全项目共用一个，方便直接丢切片器）")
+                    help="可打印 STL 的根目录（默认 print/；每单落到 print/jobs/<job>/）")
     args = ap.parse_args(argv)
 
     # ---- 输出布局（约定见 guides/output-layout.md）
-    #   print/<job>_base.stl      可打印：底模
-    #   print/<job>_cutter.stl    可打印：边框
-    #   out/<job>/                其余全部（report / preview / svg / model / MANIFEST）
+    #   print/jobs/<job>/base.stl      可打印：底模 / 凹模
+    #   print/jobs/<job>/cutter.stl    可打印：边框
+    #   out/<job>/                     其余全部（report / preview / svg / model / MANIFEST）
     out = Path(args.out)
     job_dir = out.with_suffix("") if out.suffix else out      # 兼容老写法 --out out\x.stl
     job = job_dir.name
     pdir = Path(args.print_dir)
-    pdir.mkdir(parents=True, exist_ok=True)
+    job_print = pdir / "jobs" / job
+    job_print.mkdir(parents=True, exist_ok=True)
     job_dir.mkdir(parents=True, exist_ok=True)
-    base_stl = pdir / f"{job}_base.stl"
-    cutter_stl_path = pdir / f"{job}_cutter.stl"
+    base_stl = job_print / "base.stl"
+    cutter_stl_path = job_print / "cutter.stl"
     src = Path(args.input)
     log(f"=== {src.name} -> {args.size}mm 凸印章（job: {job}）===")
 
@@ -998,7 +1000,7 @@ def main(argv=None):
         "thin_parts_at_risk": int(lost),
         "stroke_stats_mm": stats,
         "cutter": cutter_info,
-        "handle": {"note": "独立标准件，见 handles/handle_slim.stl（make_handle.py）"},
+        "handle": {"note": "独立标准件，见 print/standard/handle_slim.stl（src/make_handle.py）"},
     }
     out_marker = job_dir / "report.json"
     out_marker.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1015,7 +1017,7 @@ def main(argv=None):
                     f"{cutter_info['inner_size_mm'][0]:.0f} 壁 {args.cutter_wall} "
                     f"高 {args.cutter_height} 刃 {args.cutter_edge}mm")
         else:
-            note = "手柄另件：print/handle_slim.stl（φ14 × 25）"
+            note = "手柄另件：print/standard/handle_slim.stl（φ14 × 25）"
         if sink:
             note = f"凹模 · 图案下沉 {D}mm · 槽壁外张 {draft}° · " + note
         p1 = render_preview(base_mm, pat_mm, B, D, job_dir / "preview.png",

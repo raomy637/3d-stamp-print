@@ -2,6 +2,15 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v10 · 2026-11-24 · 目录重构（src/ + print 三档 + 层高对比件）
+
+- 之前所有脚本平铺在根目录，产出和代码混在一起。现在代码全进 `src/`：`stamp_pipeline.py`、`make_handle.py`、`make_print_index.py`、`src/viewer/`、`src/tools/`。根目录只剩 `README.md`、`CHANGELOG.md`、`PRINT.md`、`.gitignore` 与四个目录。
+- `print/` 拆成三个抽屉，一眼分清生命周期：`standard/`（定稿可复用的标准件，手柄在这）、`jobs/<job>/{base,cutter}.stl`（跟图案走的这一单）、`test/`（试打与对比，随时可删）。件名从 `<job>_base.stl` 简化为 `base.stl`，因为目录已经带单号。
+- `make_print_index.py` 重写扫描逻辑：三档分开收集、分三节渲染；`--check` 保留四类问题（读取失败 / 非水密 / 只有底模没边框 / 命名不合约定）。
+- 新增 `src/tools/handle_layer_test.py`：生成 3 个手柄一排的对比件（`print/test/handle_layer/layer_3.stl`，62×14×25、5,184 面、水密），并写 `out/handles/layer_test.md` 记录表（0.4/0.16、0.4/0.12、0.2/0.08 三组，靠位置区分）。
+- `run_job.py`（Skill）同步新路径；`README`、`guides/output-layout.md`（重写）、`cavity.md` 的命令全部改成 `python src\...`。
+- 验证：`stamp_pipeline.py` 出凹模 → 件落 `print/jobs/bakers_cav/`；viewer 出 `model.html`；`--check` rc=0；skill 一条命令端到端跑通。
+
 ## v9.1 · 2026-11-24 · 手柄表面观感（层高才是变量）
 
 - 打印出来的手柄一圈圈横纹明显，用户先怀疑建模。核了网格：96 段旋转体、棱面弦高误差 0.0027mm（比 0.16 层高小 60 倍），侧面是折线旋转出的直锥面，几何 z 向只有 10 圈折点——建模不是主因。

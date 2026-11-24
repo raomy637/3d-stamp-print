@@ -113,7 +113,7 @@ def layout_batch(one, count, gap=8.0, cols=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None,
-                    help="输出 STL；默认 print/handle_slim.stl（或 handle_x<N>.stl）")
+                    help="输出 STL；默认 print/standard/handle_slim.stl（或 handle_x<N>.stl）")
     ap.add_argument("--count", type=int, default=1, help="排几个（一批打印）")
     ap.add_argument("--gap", type=float, default=8.0, help="件间距 mm")
     ap.add_argument("--cols", type=int, default=None, help="每行几个，默认按床宽自动")
@@ -121,11 +121,11 @@ def main():
     ap.add_argument("--json", default=None, help="体检报告输出路径；默认 out/handles/")
     args = ap.parse_args()
 
-    root = Path(__file__).resolve().parent
-    # 可打印件统一进 print/；体检 json 进 out/handles/（都是给人看的）
+    root = Path(__file__).resolve().parent.parent
+    # 标准件统一进 print/standard/（定稿可复用）；体检 json 进 out/handles/（给人看的）
     out = Path(args.out) if args.out else (
-        root / "print" / ("handle_slim.stl" if args.count <= 1
-                          else f"handle_x{args.count}.stl"))
+        root / "print" / "standard" / ("handle_slim.stl" if args.count <= 1
+                                       else f"handle_x{args.count}.stl"))
     out.parent.mkdir(parents=True, exist_ok=True)
     rep_dir = root / "out" / "handles"
     rep_dir.mkdir(parents=True, exist_ok=True)

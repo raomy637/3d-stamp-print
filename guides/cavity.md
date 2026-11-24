@@ -6,7 +6,7 @@
 两套模具的边框、手柄完全通用，只换底模。
 
 ```
-python stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 `
+python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 `
     --relief 1.8 --relief-mode sink --cavity-draft 5
 ```
 
