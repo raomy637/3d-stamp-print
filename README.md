@@ -31,7 +31,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | `src/make_handle.py`            | 手柄 STL（可 `--count` 联排，一次打一批）                            |
 | `src/make_print_index.py`       | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                       |
 | `src/viewer/make_viewer.py`     | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                       |
-| `src/tools/`                    | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图 |
+| `src/tools/`                    | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图・`preview_handle_styles.py` 三款剖面・`handle_compare_board.py` 手感对比板 |
 | `print/standard/`               | 定稿可复用的标准件（手柄）                                          |
 | `print/jobs/<job>/`             | 这一单的模具：`base.stl` + `cutter.stl`                          |
 | `print/test/`                   | 试打、层高对比、实验件，随时可删                                       |
@@ -91,9 +91,11 @@ python src\stamp_pipeline.py --input 图案.png --out out\xxx --min-stroke 0.9
 
 # 2) 手柄（标准件，只在换尺寸时才重跑；平时直接打 print\standard\ 里现成的）
 python src\make_handle.py                      # 单个 -> print\standard\handle_slim.stl
+python src\make_handle.py --style column       # φ14 直筒款 -> print\standard\handle_column.stl
 python src\make_handle.py --count 6            # 一排 -> print\standard\handle_x6.stl（124×14）
 python src\make_handle.py --count 12 --cols 6  # 一盘 -> print\standard\handle_x12.stl（124×36）
 python src\tools\handle_layer_test.py          # 层高对比件 3 个一排 -> print\test\handle_layer\
+python src\tools\handle_compare_board.py       # 三款各一个 -> print\test\handle_shape\compare_3.stl
 
 # 3) 看总表 / 体检 print\ 里能不能直接打
 python src\make_print_index.py                 # 刷新 PRINT.md
@@ -154,7 +156,7 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
 
-手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。两款现成：`--style dome`（圆顶，斜面占 61.6%）、`--style straight`（直筒 + 顶 R3，斜面降到 18.6%，表面横纹明显更少）。批量用 `--count 6/12`，件分别是 `print\standard\handle_slim.stl`、`handle_x6.stl`、`handle_x12.stl`。
+手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。三款现成（斜面占比按面法线实测）：`--style dome` 圆顶 61.6%、`--style straight` φ11.8 直筒 15.8%、`--style column` φ14 直筒 9.3%（960 面，斜面最少）。批量用 `--count 6/12`；想一板比手感跑 `python src\tools\handle_compare_board.py`（三款各一个，58×14mm）。
 
 ## 边框：独立切模
 

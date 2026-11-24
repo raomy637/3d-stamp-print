@@ -63,7 +63,24 @@ HANDLE_STRAIGHT = [
     (2.4, 25.0),
     (0.0, 25.0),
 ]
-STYLES = {"dome": HANDLE_PROFILE, "straight": HANDLE_STRAIGHT}
+# 直筒升级版：口径直接给到底盘同径 φ14、取消收颈，只剩顶端 R3 圆角，
+# 斜面只存在于顶部那 3mm 环带。握持感变成 "带倒角的柱子"，横纹最少。
+HANDLE_COLUMN = [
+    (0.0, 0.0),
+    (7.0, 0.0),      # 底面 φ14，粘接面 154mm²
+    (7.0, 22.0),     # φ14 直筒贯通到 z22
+    (6.60, 23.50),   # 顶 R3 圆角：圆心 (r4, z22)，30°
+    (5.50, 24.60),   # 60°
+    (4.00, 25.00),   # 90°，顶上留 φ8 平台
+    (0.0, 25.00),
+]
+STYLES = {"dome": HANDLE_PROFILE, "straight": HANDLE_STRAIGHT, "column": HANDLE_COLUMN}
+# 标准件命名（换图不重打，所以名字必须稳定）
+NAMES = {
+    "dome": ("handle_slim.stl", "handle_x{n}.stl"),
+    "straight": ("handle_straight.stl", "handle_straight_x{n}.stl"),
+    "column": ("handle_column.stl", "handle_column_x{n}.stl"),
+}
 
 
 def revolve(profile, segments=96):
@@ -148,6 +165,15 @@ def layout_batch(one, count, gap=8.0, cols=None):
     return trimesh.util.concatenate(parts), (cols, rows)
 
 
+def grip_radius_at(profile, z=10.0):
+    """剖面上 z 高度处的半径（线性插值）。剖面点可能很稀（直筒只有两个点），不能只按折点筛。"""
+    for (r0, z0), (r1, z1) in zip(profile, profile[1:]):
+        if z0 <= z <= z1 and z1 > z0:
+            t = (z - z0) / (z1 - z0)
+            return r0 + t * (r1 - r0)
+    return max(r for r, _ in profile)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None,
@@ -156,8 +182,8 @@ def main():
     ap.add_argument("--gap", type=float, default=8.0, help="件间距 mm")
     ap.add_argument("--cols", type=int, default=None, help="每行几个，默认按床宽自动")
     ap.add_argument("--segments", type=int, default=96)
-    ap.add_argument("--style", choices=["dome", "straight"], default="dome",
-                    help="dome=现在的圆顶款（默认）；straight=直筒+顶 R3，表面更光")
+    ap.add_argument("--style", choices=["dome", "straight", "column"], default="dome",
+                    help="dome=圆顶款（默认）；straight=φ11.8 直筒；column=φ14 直筒，斜面最少")
     ap.add_argument("--engine", choices=["scad", "mesh"], default="scad",
                     help="scad=OpenSCAD rotate_extrude（改剖面只动一个数组）；mesh=旧 revolve()")
     ap.add_argument("--json", default=None, help="体检报告输出路径；默认 out/handles/")
@@ -166,10 +192,8 @@ def main():
     root = Path(__file__).resolve().parent.parent
     profile = STYLES[args.style]
     # 标准件统一进 print/standard/（定稿可复用）；体检 json 进 out/handles/（给人看的）
-    default_name = ("handle_slim.stl" if args.style == "dome" else "handle_straight.stl") \
-        if args.count <= 1 else (
-            f"handle_x{args.count}.stl" if args.style == "dome"
-            else f"handle_straight_x{args.count}.stl")
+    single_name, batch_name = NAMES[args.style]
+    default_name = single_name if args.count <= 1 else batch_name.format(n=args.count)
     out = Path(args.out) if args.out else (root / "print" / "standard" / default_name)
     out.parent.mkdir(parents=True, exist_ok=True)
     rep_dir = root / "out" / "handles"
@@ -190,7 +214,7 @@ def main():
 
     b = mesh.bounds
     size = b[1] - b[0]
-    grip_d = 2.0 * max(r for r, z in profile if 2.6 <= z <= 19.0)
+    grip_d = 2.0 * grip_radius_at(profile, 10.0)
     info = {
         "file": str(out.relative_to(root)) if out.is_relative_to(root) else str(out),
         "engine": "scad" if secs else "mesh",

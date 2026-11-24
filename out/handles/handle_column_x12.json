@@ -1,0 +1,22 @@
+{
+  "file": "print\\standard\\handle_column_x12.stl",
+  "engine": "scad",
+  "scad_render_s": 0.1,
+  "style": "column",
+  "count": 12,
+  "grid": [
+    11,
+    2
+  ],
+  "gap_mm": 8.0,
+  "height_mm": 25.0,
+  "flange_d_mm": 14.0,
+  "grip_d_mm": 14.0,
+  "plate_size_mm": [
+    234.0,
+    36.0
+  ],
+  "triangles": 11520,
+  "watertight": true,
+  "volume_cm3_one": 3.76
+}
