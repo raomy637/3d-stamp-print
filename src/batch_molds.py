@@ -54,52 +54,120 @@ def read_list(path: Path) -> list[dict]:
     return out
 
 
-def run_one(spec: dict, batch: str, html: bool, preview: bool) -> dict:
+def build_task(spec: dict, batch: str, html: bool, preview: bool) -> dict:
+    """把一套的参数编成任务：主进程只拼参数，真正干活在常驻 worker 里。"""
     item = spec["item"]
     job = f"{batch}/{item}"
     out_dir = ROOT / "out" / batch / item
     base = ROOT / "print" / "jobs" / batch / item / "base.stl"
     cutter = ROOT / "print" / "jobs" / batch / item / "cutter.stl"
-
-    cmd = [sys.executable, str(ROOT / "src" / "stamp_pipeline.py"),
-           "--input", spec["input"], "--out", str(out_dir), "--job", job,
-           "--size", str(spec["size"]), "--relief", str(spec["relief"]),
-           "--relief-mode", spec["mode"], "--no-index"]
-    if not preview:
-        cmd.append("--no-preview")
-    t0 = time.perf_counter()
-    p = subprocess.run(cmd, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8")
-    secs = time.perf_counter() - t0
-    rec = {**spec, "job": job, "rc": p.returncode, "render_s": round(secs, 1),
-           "files": {}, "html": None, "err": None}
-
-    if p.returncode != 0:
-        rec["err"] = (p.stderr or p.stdout or "").strip()[-800:]
-        return rec
-
     rep_p = out_dir / "report.json"
-    rep = json.loads(rep_p.read_text(encoding="utf-8")) if rep_p.exists() else {}
-    rec["report"] = {k: rep.get(k) for k in
-                     ("relief_mode", "size_mm", "stamp_size_mm", "relief", "base_thickness",
-                      "cavity_draft_deg", "engine", "scad_render_s", "watertight", "triangles")}
-    for k, f in (("base", base), ("cutter", cutter)):
-        if f.exists():
-            rec["files"][k] = str(f)
 
-    if html and base.exists():
-        hp = out_dir / "model.html"
-        vc = [sys.executable, str(ROOT / "src" / "viewer" / "make_viewer.py"),
-              "--stl", str(base), "--report", str(rep_p), "--out", str(hp),
-              "--title", f"{batch} · {item}"]
-        if cutter.exists():
-            vc += ["--cutter", str(cutter)]
+    argv = ["--input", spec["input"], "--out", str(out_dir), "--job", job,
+            "--size", str(spec["size"]), "--relief", str(spec["relief"]),
+            "--relief-mode", spec["mode"], "--no-index"]
+    if not preview:
+        argv.append("--no-preview")
+
+    viewer = None
+    if html:
+        viewer = ["--stl", str(base), "--report", str(rep_p),
+                  "--out", str(out_dir / "model.html"), "--title", f"{batch} · {item}",
+                  "--cutter", str(cutter)]
         h = ROOT / "print" / "standard" / "handle_straight.stl"
         if h.exists():
-            vc += ["--handle", str(h)]
-        v = subprocess.run(vc, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8")
-        if v.returncode == 0:
+            viewer += ["--handle", str(h)]      # 边框还没出时 viewer 自己会跳过缺失件？不——见 worker
+    return {"item": item, "spec": spec, "job": job, "argv": argv, "viewer": viewer,
+            "out_dir": str(out_dir), "base": str(base), "cutter": str(cutter),
+            "report": str(rep_p)}
+
+
+def collect(tasks: list[dict], results: list[dict]) -> list[dict]:
+    """worker 只回 rc/耗时；报告与文件由主进程读，保证同一口径。"""
+    by_item = {r["item"]: r for r in results}
+    recs = []
+    for t in tasks:
+        spec = t["spec"]
+        r = by_item.get(t["item"], {"rc": 1, "render_s": 0, "log": "worker 没返回结果"})
+        rec = {**spec, "job": t["job"], "rc": r["rc"],
+               "render_s": round(float(r.get("render_s") or 0), 1),
+               "files": {}, "html": None, "err": None}
+        if rec["rc"] != 0:
+            rec["err"] = (r.get("log") or "").strip()[-800:]
+            recs.append(rec)
+            continue
+        rep_p = Path(t["report"])
+        rec["report"] = {}
+        if rep_p.exists():
+            rep = json.loads(rep_p.read_text(encoding="utf-8"))
+            rec["report"] = {k: rep.get(k) for k in
+                             ("relief_mode", "size_mm", "stamp_size_mm", "relief",
+                              "base_thickness", "cavity_draft_deg", "engine",
+                              "scad_render_s", "watertight", "triangles")}
+        for k, p in (("base", t["base"]), ("cutter", t["cutter"])):
+            if Path(p).exists():
+                rec["files"][k] = p
+        hp = Path(t["out_dir"]) / "model.html"
+        if t.get("viewer") and hp.exists():
             rec["html"] = str(hp)
-    return rec
+        recs.append(rec)
+    return recs
+
+
+def run_serial(tasks: list[dict], workers: int) -> list[dict]:
+    """老路子：每套一个 python 子进程（便于单套排错，慢在重复导入）。"""
+    def one(t):
+        t0 = time.perf_counter()
+        p = subprocess.run([sys.executable, str(ROOT / "src" / "stamp_pipeline.py")] + t["argv"],
+                           cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8")
+        rc = p.returncode
+        if rc == 0 and t.get("viewer"):
+            v = subprocess.run([sys.executable, str(ROOT / "src" / "viewer" / "make_viewer.py")]
+                               + t["viewer"], cwd=ROOT, env=ENV,
+                               capture_output=True, text=True, encoding="utf-8")
+            rc = rc if v.returncode == 0 else v.returncode
+            if v.returncode:
+                p = v
+        return {"item": t["item"], "rc": rc, "render_s": round(time.perf_counter() - t0, 2),
+                "log": (p.stderr or p.stdout or "").strip()}
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        return list(ex.map(one, tasks))
+
+
+def run_workers(tasks: list[dict], workers: int, on_done=None) -> list[dict]:
+    """默认路子：N 个常驻 worker，每个只导入一次库，顺序跑自己分到的套。"""
+    n = max(1, min(workers, len(tasks)))
+    buckets = [[] for _ in range(n)]
+    for i, t in enumerate(tasks):
+        buckets[i % n].append(t)
+
+    procs, tmp = [], ROOT / "print" / "_tmp" / "batch"
+    tmp.mkdir(parents=True, exist_ok=True)
+    for i, b in enumerate(buckets):
+        if not b:
+            continue
+        tp, rp = tmp / f"tasks_{i}.json", tmp / f"results_{i}.json"
+        tp.write_text(json.dumps(b, ensure_ascii=False), encoding="utf-8")
+        if rp.exists():
+            rp.unlink()
+        procs.append((subprocess.Popen(
+            [sys.executable, str(ROOT / "src" / "batch_worker.py"), str(tp), str(rp)],
+            cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE), rp))
+
+    results = []
+    for pr, rp in procs:
+        stderr = pr.communicate()[1]
+        if rp.exists():
+            results.extend(json.loads(rp.read_text(encoding="utf-8")))
+        else:
+            tail = (stderr or b"").decode("utf-8", "replace").strip()[-600:]
+            print(f"  [!] 一个 worker 没写结果：{tail}")
+    for t in tasks:
+        if t["item"] not in {r["item"] for r in results}:
+            results.append({"item": t["item"], "rc": 1, "render_s": 0,
+                            "log": "worker 崩溃，没拿到这套的结果"})
+    return results
 
 
 def mark_same_cutters(recs: list[dict]) -> None:
@@ -162,8 +230,11 @@ def main(argv=None):
     ap.add_argument("--jobs", type=int, default=max(2, min(8, os.cpu_count() // 2)),
                     help="并行路数（默认 CPU 线程数的一半，最多 8）")
     ap.add_argument("--no-html", action="store_true", help="跳过每套的 model.html")
-    ap.add_argument("--no-preview", action="store_true", help="跳过多栏预览图（更快）")
+    ap.add_argument("--no-preview", action="store_true", help="跳过多栏预览图（更快，省 ~20%）")
+    ap.add_argument("--preview", action="store_true", help="批量也出多栏预览图（默认不出，html 仍出）")
     ap.add_argument("--limit", type=int, default=0, help="只跑前 N 套（试跑用）")
+    ap.add_argument("--serial", action="store_true",
+                    help="每套起一个独立 python 进程（排错用，慢在重复导入约 4.7s/套）")
     args = ap.parse_args(argv)
 
     specs = read_list(Path(args.list))
@@ -173,21 +244,19 @@ def main(argv=None):
         print("[x] 清单是空的")
         return 2
 
-    print(f"=== 批次 {args.batch}：{len(specs)} 套，并行 {args.jobs} 路 ===")
+    html = not args.no_html
+    preview = bool(args.preview) and not args.no_preview
+    tasks = [build_task(s, args.batch, html, preview) for s in specs]
+    mode = "每套独立进程（--serial）" if args.serial else f"常驻 worker ×{args.jobs}（导入只付一次）"
+    print(f"=== 批次 {args.batch}：{len(specs)} 套 · {mode} ===")
     t0 = time.perf_counter()
-    recs = []
-    with ThreadPoolExecutor(max_workers=args.jobs) as ex:
-        futs = {ex.submit(run_one, s, args.batch, not args.no_html, not args.no_preview): s
-                for s in specs}
-        done = 0
-        for fut in as_completed(futs):
-            rec = fut.result()
-            recs.append(rec)
-            done += 1
-            flag = "✓" if rec.get("rc") == 0 else "×"
-            print(f"  [{done}/{len(specs)}] {flag} {rec['item']:<18} {rec['render_s']:>6.1f}s"
-                  + ("" if rec.get("rc") == 0 else f"  {rec['err'][-200:] if rec['err'] else ''}"))
+    results = run_serial(tasks, args.jobs) if args.serial else run_workers(tasks, args.jobs)
     wall = time.perf_counter() - t0
+    recs = collect(tasks, results)
+    for r in sorted(recs, key=lambda x: x["item"]):
+        flag = "✓" if r.get("rc") == 0 else "×"
+        print(f"  {flag} {r['item']:<18} {r['render_s']:>6.1f}s"
+              + ("" if r.get("rc") == 0 else f"  {(r.get('err') or '')[-200:]}"))
 
     mark_same_cutters(recs)
     write_index(args.batch, recs, wall, args.jobs)

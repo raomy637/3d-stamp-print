@@ -96,7 +96,7 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --jobs 8
 python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 2   # 先试跑两套
 ```
 
-批量清单是 CSV（`item,input,size,relief,mode` 五列，缺省 85 / 1.8 / raise），单号只管起名，路径由脚本拼：**每套的底模和边框一定落在同一个单号目录里**——`print/jobs/<批次>/<单号>/{base,cutter}.stl`，记录在 `out/<批次>/<单号>/`，批次总表是 `out/<批次>/INDEX.md`（配对、成品尺寸、面数、水密、耗时一行一套）。实测 i5-13400 / 8 路并行：**10 套 51s、40 套 96s**（单套 2.4s，比串行快 5 倍）。命名规则、失败处理与提速原理见 [guides/batch.md](guides/batch.md)。
+批量清单是 CSV（`item,input,size,relief,mode` 五列，缺省 85 / 1.8 / raise），单号只管起名，路径由脚本拼：**每套的底模和边框一定落在同一个单号目录里**——`print/jobs/<批次>/<单号>/{base,cutter}.stl`，记录在 `out/<批次>/<单号>/`，批次总表是 `out/<批次>/INDEX.md`（配对、成品尺寸、面数、水密、耗时一行一套）。实测 i5-13400 / 8 路常驻 worker：**10 套 22s、40 套 61s**（16 路 47s，但会占满 CPU）。命名规则、失败处理与提速拆解见 [guides/batch.md](guides/batch.md)。
 
 ## 参数
 

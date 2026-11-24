@@ -374,7 +374,7 @@ const RING  = decode("__B64_RING__");
 """
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--stl", required=True)
     ap.add_argument("--handle", default=None)
@@ -384,7 +384,7 @@ def main():
     ap.add_argument("--title", default="3D 印章")
     ap.add_argument("--kind", choices=["stamp", "handle"], default="stamp",
                     help="stamp=底模/凹模（默认）；handle=STL 本身就是手柄，隐藏底板/浮雕与镜像状态")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     stamp = trimesh.load(args.stl)
     sd = dims_of(stamp)

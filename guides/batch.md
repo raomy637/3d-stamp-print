@@ -46,31 +46,41 @@ C_tree,inputs/tree.png,85,1.8,sink
 ```
 python src\batch_molds.py --batch 2026-11-24_xmas_40 --list inputs\batch_xmas40.csv --jobs 8
 python src\batch_molds.py --batch ... --list ... --limit 2      # 先试跑两套，看图对不对
-python src\batch_molds.py --batch ... --list ... --no-html      # 不要每套的 3D 预览
-python src\batch_molds.py --batch ... --list ... --no-preview   # 不要三栏预览图（省 ~15%）
+python src\batch_molds.py --batch ... --list ... --no-html      # 连 model.html 也不要（最快）
+python src\batch_molds.py --batch ... --list ... --preview      # 额外出三栏预览图（慢 ~20%）
+python src\batch_molds.py --batch ... --list ... --serial       # 每套独立进程（排错用）
 ```
 
-`--jobs` 默认 `min(8, CPU线程/2)`。单套失败不阻塞其他套：失败的那行在 `INDEX.md` 里标「失败」并把最后 800 字错误留在 `batch.json`，其余照跑，退出码 1。
+`--jobs` 默认 `min(8, CPU线程/2)`。默认走**常驻 worker**：任务按 round-robin 分给 N 个 `batch_worker.py` 进程，每个进程只导入一次 numpy/scipy/skimage/trimesh，之后顺序跑自己那一份。`--serial` 退回"每套一个独立进程"，只在单套排错时用。
 
-跑完自动刷新 `PRINT.md`（一次，不是每套一次）；单套用 `--no-index` 跳过，避免 40 个进程抢着写同一个文件。
+单套失败不阻塞其他套：失败的那行在 `INDEX.md` 里标「失败」并把最后 800 字错误留在 `batch.json`，其余照跑，退出码 1。
 
-## 性能：40 套 96 秒
+跑完自动刷新 `PRINT.md`（一次，不是每套一次）；单套用 `--no-index` 跳过，避免 40 个进程抢着写同一个文件。**多栏预览图默认不出**（`preview.png` 每套 ~1.9s，40 套白花 76s CPU），要看就加 `--preview`；每套的 `model.html` 照旧生成。
 
-i5-13400（10 核 16 线程）/ 8 路并行 / 图案 2048×2048：
+## 性能：40 套 61 秒（8 路）/ 47 秒（16 路）
 
-| 规模 | 串行估算 | 实测墙钟 | 平均每套 |
+i5-13400（10 核 16 线程）/ 图案 2048×2048 / `--no-html` / 不出 preview：
+
+| 并行数 | 旧法（每套独立进程） | 现在（常驻 worker） | 提速 |
 |---|---|---|---|
-| 10 套 | 2.1 分钟 | **51 s** | 5.1 s（带 html + preview） |
-| 40 套 | 8.4 分钟 | **96 s** | 2.4 s（`--no-html`） |
+| 8 | 96 s（含 preview）→ 75 s（无 preview） | **60.6 s** | −37% |
+| 10 | — | 54.8 s | |
+| 12 | — | 51.0 s | |
+| 16 | — | **46.7 s** | −51% |
 
-加速来自四层，按贡献排：
+10 套规模：51 s（每套带 html + preview）→ 现在 8 路约 22 s。
 
-1. **OpenSCAD nightly + Manifold 后端**：底模渲染 21.9s → **1.0s**（旧 2021.01 / CGAL）。2025-08-18 起 Manifold 是默认后端，官方只发 nightly（`tools/openscad_nightly/`，224MB，gitignore）。同类实测参考：ModelRift 博客 CGAL 540s → Manifold 27s；Brennen Johnston 的盲文生成器 2021.01 45 分钟 → nightly 1.8s。
-2. **进程级并行**：每套一个独立 `stamp_pipeline.py` 子进程，进程间零共享，天然可并行；8 路时单套 10s 变成 2.4s 摊薄。
-3. **别每套刷索引**：`PRINT.md` 重建要读全部 STL 的网格（当时 40 件耗 4.1s/次），批量里 `--no-index`，批次结束刷一次。
-4. **STL 体检加缓存**：`.cache/probe.json` 按 `mtime+size` 记尺寸/面数/水密/体积，没改过的文件不重复解网格。索引刷新从 4s 掉到 0.4s。
+提速来源（按贡献排）：
 
-再往下压的余量：单套 10.3s 里约 4.7s 是 Python 导入（numpy/scipy/skimage/trimesh），1s 是 OpenSCAD，其余是轮廓提取与布尔。要再快得让 worker 常驻复用解释器（已否，复杂度不值当——40 套 96s 已在可接受区间）。
+1. **常驻 worker**（本次，最大一块）：旧法每套重启解释器，numpy/scipy/skimage/trimesh 重新导入 **4.7 s**，40 套 = 188 s 纯 CPU 白烧。改成一个进程连跑多套后，导入只付 N 次。
+2. **OpenSCAD nightly + Manifold 后端**：底模渲染 21.9 s → **1.0 s**（旧 2021.01 / CGAL）。2025-08-18 起 Manifold 是默认后端，官方只发 nightly（`tools/openscad_nightly/`，224MB，gitignore）。同类实测：ModelRift CGAL 540s → Manifold 27s；Brennen Johnston 盲文生成器 45 分钟 → 1.8s。
+3. **批量关 preview**：三栏 matplotlib 图 1.9 s/套，40 套 76 s CPU，默认不出。
+4. **别每套刷索引**：`PRINT.md` 重建要读全部 STL 网格（40 件 4.1 s/次），批量 `--no-index`，批次结束刷一次。
+5. **STL 体检缓存**：`.cache/probe.json` 按 `mtime+size` 记尺寸/面数/水密/体积，索引刷新 4 s → 0.4 s。
+
+单套剩下的 5 s 几何（已不含导入、不含 preview）：轮廓提取 0.4s、外框识别 0.5s、线宽统计 0.8s（距离变换）、shapely 布尔 0.2s、OpenSCAD 进程 + 渲染 1.0–1.3s、trimesh 体检 0.3s。都是 2048px 全图操作或一次性进程启动，**没有单点值得再拆**；降采样能省 0.9s 但会改动轮廓精度，不做。
+
+`--jobs` 怎么选：**8 是"机器还能用"的上限**，12/16 更快但会把 16 线程打满、桌面明显卡；要极限吞吐再往上加。
 
 ## 边界件
 

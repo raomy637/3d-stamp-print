@@ -2,6 +2,15 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.9 · 2026-11-25 · 批量再提速：常驻 worker，40 套 96s → 61s
+
+- 新增 `src/batch_worker.py`：一个进程连跑多套，`stamp_pipeline.main()` 与 `make_viewer.main()` 被当作函数重复调用（两者本来就吃 `argv` 列表，无需重构），numpy/scipy/skimage/trimesh 只导入一次。40 套省掉 **188 秒纯 CPU 导入**。
+- `batch_molds.py` 改成"任务分片 + N 个常驻 worker"：主进程只拼参数、读报告、写 `INDEX.md`；`--serial` 保留旧法（每套独立进程）供排错。几何字节级不变——同 3 套新旧两法出的 6 个 STL，SHA256 完全一致。
+- 多栏预览图改为**默认不出**（`preview.png` 每套 1.9s、40 套 76s CPU），要看加 `--preview`；`model.html` 仍每套都出（Skill 硬规则不变）。
+- 实测（i5-13400，40 套 `--no-html`）：8 路 **96s → 60.6s**（−37%）；10 路 54.8s；12 路 51.0s；16 路 46.7s（−51%，但打满 16 线程、桌面明显卡，默认仍是 8）。10 套规模 51s → 22s。
+- profile 结论写进 `guides/batch.md`：单套剩余 5s = 轮廓 0.4 + 外框识别 0.5 + 线宽统计 0.8 + shapely 0.2 + OpenSCAD 进程与渲染 1.3 + trimesh 体检 0.3，无单点值得再拆（降采样能省 0.9s 但会动轮廓精度，不做）。
+- `make_viewer.main()` 补 `argv=None` 参数，使其可被进程内复用；CLI 行为不变。
+
 ## v11.8 · 2026-11-25 · 文档治理（Superpowers Plus 02 口径）＋ 补记 v11.7
 
 - 体积对齐红线：入口 `SKILL.md` 126 → **108**（≤120）；索引 `README.md` 191 → **180**（≤200）。两者都正好压在 90% 预警线，下一条内容必须先拆再写。细节层：`openscad.md` 117、`output-layout.md` 106、`batch.md` 91，全部 ≤300。
