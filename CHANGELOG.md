@@ -2,6 +2,16 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v9 · 2026-11-24 · 凹模（成品图案凸起）
+
+- 新增 `--relief-mode {raise,sink}`。raise 是原来的凸印章；sink 把图案沉成凹槽，粘土压进去再取出，成品图案是凸的。用户要的"图案凸起"就是这条路，不需要另起一套流程。
+- 新增 `--cavity-draft`（默认 5°）与 `--cavity-segments`（默认 4）。凹槽槽底窄、开口宽，脱模才不卡；依据是 printforgehq（5–15°、深 1.5–3mm）、Meshcast（层纹面 3–5°）、Flashforge（负模必备拔模）。垂直墙能打但细线会被粘土拽断。
+- 布尔的坑：图案把顶面切成一堆互不相连的小岛，`trimesh` 的 volume 预检直接报 "Not all meshes are volumes!"，差集出不来。改成 `check_volume=False` 交给 manifold 自己合并多体，才拿到水密单壳。
+- 深度自动夹到 `base_thickness - 1.0`，槽底至少留 1mm。
+- 凹模样件 `bakers_cav`：84.2×84.2×3.0、144,648 面、水密、14.7cm³；边框与手柄直接复用同一套。
+- 预览与查看器认模式：preview 三栏改成「凹模实物 / 压印效果 / 剖面（槽深）」，HUD 显示"底板 / 槽深"与"凹模锥度"。
+- 新增 `guides/cavity.md`（几何做法、锥度取值表、深度取舍、打印参数、四条硬限制）；README 增一节；`PRINT.md` / `MANIFEST.md` 自动标「凹模 · 槽深 · 外张」。
+
 ## v8 · 2026-11-24 · 纳入 Git，备份到 GitHub 私有仓库
 
 - 本项目此前没有版本管理（`git status` 报 not a repository），改文档只能整份重写来兜底。现在 `git init -b main`，首个提交 53 个文件 / 12.5 MiB，远端为私有仓库 `raomy637/3d-stamp-print`（SSH，`origin/main` 已跟踪）。

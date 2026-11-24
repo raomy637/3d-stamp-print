@@ -113,7 +113,7 @@ def render(data) -> str:
             L.append(f"- {b}")
         L.append("")
 
-    L.append("## 底模 + 边框（每个图案一套，换图要重做）")
+    L.append("## 底模 + 边框（凸模/凹模，每个图案一套，换图要重做）")
     L.append("")
     if jobs:
         for job in sorted(jobs, key=lambda j: max(
@@ -121,8 +121,12 @@ def render(data) -> str:
             rep = job_report(job)
             sub = ""
             if rep:
-                sub = (f"（成品 {rep.get('size_mm', '?')}mm · 浮雕 {rep.get('relief', '?')}mm · "
-                       f"底板 {rep.get('base_thickness', '?')}mm）")
+                if rep.get("relief_mode") == "sink":
+                    sub = (f"（凹模 · 成品 {rep.get('size_mm', '?')}mm · 槽深 {rep.get('relief', '?')}mm "
+                           f"外张 {rep.get('cavity_draft_deg', '?')}° · 底板 {rep.get('base_thickness', '?')}mm）")
+                else:
+                    sub = (f"（凸模 · 成品 {rep.get('size_mm', '?')}mm · 浮雕 {rep.get('relief', '?')}mm · "
+                           f"底板 {rep.get('base_thickness', '?')}mm）")
             L.append(f"### `{job}` {sub}")
             L.append("")
             L.append("| 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |")

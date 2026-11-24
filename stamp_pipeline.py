@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -351,7 +352,7 @@ def _labelize(img, text, pad=8):
     return out
 
 
-def render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h):
+def render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h, sink=False):
     """俯视高度场渲染，返回 PIL.Image（未镜像）。"""
     bounds = unary_union([g for g in (base, pattern) if g is not None and not g.is_empty]).bounds
     w_mm = bounds[2] - bounds[0]
@@ -373,17 +374,22 @@ def render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h):
         hfield[r, c] = value
 
     rim_z = base_t + relief + rim_h if rim_w > 0 else 0.0
+    if sink:
+        rim_z = base_t + rim_h
     inner = base.buffer(-rim_w) if rim_w > 0 else None
 
     for poly in (base.geoms if isinstance(base, MultiPolygon) else [base]):
-        fill(poly.exterior, rim_z if rim_w > 0 else base_t)
+        if sink:
+            fill(poly.exterior, (base_t + rim_h) if rim_w > 0 else base_t)
+        else:
+            fill(poly.exterior, rim_z if rim_w > 0 else base_t)
         for ring in poly.interiors:
             fill(ring, 0.0)
     if inner is not None and not inner.is_empty:
         for poly in (inner.geoms if isinstance(inner, MultiPolygon) else [inner]):
             fill(poly.exterior, base_t)
     for poly in (pattern.geoms if isinstance(pattern, MultiPolygon) else [pattern]):
-        fill(poly.exterior, base_t + relief)
+        fill(poly.exterior, base_t - relief if sink else base_t + relief)
         for ring in poly.interiors:
             fill(ring, base_t)
 
@@ -406,7 +412,16 @@ def render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h):
     base_rgb = np.array([228, 221, 206], dtype=np.float32)
     rim_rgb = np.array([176, 163, 142], dtype=np.float32)
     relief_rgb = np.array([186, 142, 104], dtype=np.float32)
+    cavity_rgb = np.array([132, 104, 78], dtype=np.float32)
     outside = hfield <= 0.005
+
+    if sink:
+        rgb = np.where((hfield < base_t - 1e-6)[..., None], cavity_rgb, base_rgb)
+        if rim_w > 0:
+            rgb = np.where((hfield > base_t + rim_h - 0.05)[..., None], rim_rgb, rgb)
+        rgb = np.where(outside[..., None], np.array([28, 30, 34], dtype=np.float32), rgb)
+        rgb = np.clip(rgb * shade[..., None], 0, 255).astype(np.uint8)
+        return Image.fromarray(rgb)
 
     rgb = np.where((hfield > base_t + 1e-6)[..., None], relief_rgb, base_rgb)
     if rim_w > 0:
@@ -419,7 +434,7 @@ def render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h):
     return Image.fromarray(rgb)
 
 
-def render_side(base, base_t, relief, ppm, rim_w, rim_h, note=""):
+def render_side(base, base_t, relief, ppm, rim_w, rim_h, note="", sink=False):
     """半剖示意（画到中心线为止，2 倍放大），带尺寸标注。
 
     手柄是独立件（make_handle.py），这里不画，只在底部注明。
@@ -427,6 +442,8 @@ def render_side(base, base_t, relief, ppm, rim_w, rim_h, note=""):
     from PIL import ImageDraw
     R = max(abs(base.bounds[0]), abs(base.bounds[2]))
     rim_z = base_t + relief + rim_h
+    if sink:
+        rim_z = base_t + rim_h
 
     pad_x, sc = 6.0, 2.0                 # sc=2：半剖后放大一倍，薄板细节看得清
     W = int((R + pad_x) * sc * ppm)
@@ -445,12 +462,25 @@ def render_side(base, base_t, relief, ppm, rim_w, rim_h, note=""):
 
     inner_r = R - rim_w if rim_w > 0 else R
     # 底板 + 中间浮雕（画成梳齿，示意线稿断面）
-    slab(-inner_r, 0.0, 0, base_t, (232, 225, 210))
-    step = 3.0
-    x = -inner_r + 0.6
-    while x < -0.6:
-        slab(x, min(x + 1.2, -0.6), base_t, base_t + relief, (238, 232, 218))
-        x += step
+    if sink:
+        slab(-inner_r, 0.0, 0, base_t, (232, 225, 210))
+        step = 3.0
+        x = -inner_r + 0.6
+        while x < -0.6:
+            # 凹槽：从顶面往下挖，开口略宽（画成梯形示意锥度）
+            x1 = min(x + 1.2, -0.6)
+            top = 0.05
+            dr.polygon([px(x, base_t - relief), px(x1, base_t - relief),
+                        px(x1 + top, base_t), px(x - top, base_t)],
+                       fill=(24, 26, 30), outline=(90, 82, 70))
+            x += step
+    else:
+        slab(-inner_r, 0.0, 0, base_t, (232, 225, 210))
+        step = 3.0
+        x = -inner_r + 0.6
+        while x < -0.6:
+            slab(x, min(x + 1.2, -0.6), base_t, base_t + relief, (238, 232, 218))
+            x += step
     # 边框
     if rim_w > 0:
         slab(-R, -inner_r, 0, rim_z, (206, 194, 174))
@@ -465,7 +495,8 @@ def render_side(base, base_t, relief, ppm, rim_w, rim_h, note=""):
         y += 26
 
     # 尺寸标注（放在剖面下方，不压线）
-    dims = [f"底板 {base_t:.1f}", f"浮雕 {relief:.1f}"]
+    dims = [f"底板 {base_t:.1f}",
+            (f"槽深 {relief:.1f}" if sink else f"浮雕 {relief:.1f}")]
     if rim_w > 0:
         dims += [f"边框宽 {rim_w:.1f}", f"边框顶 {rim_z:.1f}"]
     dims += [f"总高 {rim_z:.1f}", "半剖 · 2x"]
@@ -481,12 +512,12 @@ def render_side(base, base_t, relief, ppm, rim_w, rim_h, note=""):
 
 
 def render_preview(base, pattern, base_t, relief, out_png, ppm=12,
-                   rim_w=0.0, rim_h=0.0, note=""):
-    top = render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h)
+                   rim_w=0.0, rim_h=0.0, note="", sink=False):
+    top = render_top(base, pattern, base_t, relief, ppm, rim_w, rim_h, sink=sink)
     press = top.transpose(Image.FLIP_LEFT_RIGHT)
-    side = render_side(base, base_t, relief, ppm, rim_w, rim_h, note)
+    side = render_side(base, base_t, relief, ppm, rim_w, rim_h, note, sink=sink)
 
-    panels = [_labelize(top, "① 印章实物（镜像）"),
+    panels = [_labelize(top, "① 凹模实物（镜像）" if sink else "① 印章实物（镜像）"),
               _labelize(press, "② 压到粘土上的效果（正读）"),
               _labelize(side, "③ 剖面示意（尺寸 mm）")]
 
@@ -582,13 +613,16 @@ def write_manifest(job_dir: Path, job: str, report: dict, args,
     """写 out/<job>/MANIFEST.md：这批出了哪些文件、哪些能直接打印。"""
     import datetime as _dt
     t = _dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    sink = getattr(args, "relief_mode", "raise") == "sink"
+    mode_txt = (f"凹模（图案下沉 {args.relief}mm，成品图案凸起，槽壁外张 {args.cavity_draft}°）"
+                if sink else f"凸模（浮雕 {args.relief}mm，成品图案凹陷）")
     L = [f"# {job} · 输出清单", "",
          f"> 由 `stamp_pipeline.py` 自动生成（{t}），别手改。",
-         f"> 输入 `{Path(args.input).name}` · 成品 {args.size}mm · 浮雕 {args.relief}mm · "
+         f"> 输入 `{Path(args.input).name}` · 成品 {args.size}mm · {mode_txt} · "
          f"底板 {args.base_thickness}mm · 最小线宽 {args.min_stroke or '不改'}", "",
          "## 可以直接打印（都在 `print/`）", "",
          "| 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |", "|---|---|---|---|---|---|"]
-    for label, p in (("底模", base_stl), ("边框", cutter_stl)):
+    for label, p in (("底模" if not sink else "凹模", base_stl), ("边框", cutter_stl)):
         if not p:
             continue
         size, faces, wt, vol = _probe(p)
@@ -635,6 +669,13 @@ def main(argv=None):
     ap.add_argument("--size", type=float, default=85.0, help="成品最大外形尺寸 mm（默认 85）")
     ap.add_argument("--base-thickness", type=float, default=3.0, help="底板厚度 mm（默认 3）")
     ap.add_argument("--relief", type=float, default=1.8, help="图案凸起高度 mm（默认 1.8）")
+    ap.add_argument("--relief-mode", choices=["raise", "sink"], default="raise",
+                    help="raise=图案凸起成印章，压出来是凹线（默认）\n"
+                         "sink=图案下沉成凹槽（凹模），压出来是凸线；凹槽自动带脱模锥度")
+    ap.add_argument("--cavity-draft", type=float, default=5.0,
+                    help="凹模槽壁外张锥度 °（仅 --relief-mode sink；默认 5，0=垂直墙）")
+    ap.add_argument("--cavity-segments", type=int, default=4,
+                    help="凹模锥面的阶梯段数（默认 4；8 更平滑但面数翻倍）")
     ap.add_argument("--grow", type=float, default=0.0, help="图案整体外扩 mm（默认 0，慎用会糊字）")
     ap.add_argument("--min-stroke", type=float, default=0.0,
                     help="最小线宽 mm（0=不改）。0.4喷嘴建议 0.9，0.2喷嘴建议 0.55")
@@ -810,21 +851,71 @@ def main(argv=None):
 
     # ---- 6. 3D
     B, D = args.base_thickness, args.relief
-    log(f"  [i] 建体：底板 {B}mm + 浮雕 {D}mm"
-        + (f" + 边框 {rim_w}mm宽/{B + D + rim_h}mm高" if rim_w > 0 else ""))
+    sink = args.relief_mode == "sink"
+    draft = max(0.0, float(args.cavity_draft))
+    if os.environ.get("SP_DUMP_GEOM"):
+        import pickle
+        with open(job_dir / "geom.pkl", "wb") as fh:
+            pickle.dump({"base_mm": base_mm, "pat_mm": pat_mm, "inner": inner,
+                         "B": B, "D": D, "draft": draft}, fh)
+    if sink:
+        D = min(D, B - 1.0)
+        log(f"  [i] 建体：凹模 · 底板 {B}mm、图案下沉 {D}mm、槽壁外张 {draft}°"
+            + (f"、边框 {rim_w}mm宽/{B + rim_h}mm高" if rim_w > 0 else ""))
+    else:
+        log(f"  [i] 建体：底板 {B}mm + 浮雕 {D}mm"
+            + (f" + 边框 {rim_w}mm宽/{B + D + rim_h}mm高" if rim_w > 0 else ""))
 
     parts = []
-    if rim_w > 0:
+    if sink:
+        # 凹模：整块底板到 B，图案区域从顶面往下挖 D 深。
+        # 槽底窄、开口宽（外张锥度），粘土才拔得出来；锥面按 cavity_segments 段阶梯近似。
+        # 坑：图案把顶面切碎成多个互不相连的小岛，union 前的 volume 预检会直接报错，
+        #     所以这里走 check_volume=False，交给 manifold 自己合并多体。
+        body = inner if rim_w > 0 else base_mm
+        slab = extrude(body, 0, B, "base")
+        n = max(1, int(args.cavity_segments))
+        tan_a = math.tan(math.radians(draft))
+        cav_parts = []
+        pieces = pat_mm.geoms if hasattr(pat_mm, "geoms") else [pat_mm]
+        for k in range(n):
+            z0 = (B - D) + D * k / n
+            z1 = (B - D) + D * (k + 1) / n
+            off = D * tan_a * (k + 0.5) / n
+            for piece in pieces:
+                p = piece.buffer(off, join_style="mitre") if off > 1e-9 else piece
+                if p.is_empty:
+                    continue
+                c = extrude(p, z0, z1, f"cavity{k}")
+                if c is not None:
+                    cav_parts.append(c)
+        cav = (cav_parts[0] if len(cav_parts) == 1
+               else trimesh.boolean.union(cav_parts, engine="manifold", check_volume=False))
+        mesh = None
+        if slab is not None and cav is not None:
+            try:
+                mesh = trimesh.boolean.difference([slab, cav], engine="manifold",
+                                                  check_volume=False)
+            except Exception as e:  # noqa: BLE001
+                log(f"  [!] 差集失败：{e}")
+        if rim_w > 0 and mesh is not None:
+            ring = base_mm.difference(inner)
+            rim_m = extrude(ring, 0, B + rim_h, "rim")
+            mesh = (rim_m if mesh is None else
+                    trimesh.boolean.union([mesh, rim_m], engine="manifold", check_volume=False))
+        total_h = B + (rim_h if rim_w > 0 else 0.0)
+    elif rim_w > 0:
         ring = base_mm.difference(inner)
         parts.append(extrude(inner.difference(pat_mm), 0, B, "base"))
         parts.append(extrude(pat_mm, 0, B + D, "relief"))
         parts.append(extrude(ring, 0, B + D + rim_h, "rim"))
         total_h = B + D + rim_h
+        mesh = safe_union(parts)
     else:
         parts.append(extrude(base_mm.difference(pat_mm), 0, B, "base"))
         parts.append(extrude(pat_mm, 0, B + D, "relief"))
         total_h = B + D
-    mesh = safe_union(parts)
+        mesh = safe_union(parts)
 
     if mesh is None:
         log("[x] 网格生成失败")
@@ -889,6 +980,10 @@ def main(argv=None):
         "stamp_size_mm": [round(float(bb[1][i] - bb[0][i]), 2) for i in range(2)],
         "base_thickness": B,
         "relief": D,
+        "relief_mode": args.relief_mode,
+        "relief_mode_note": ("凹模：图案下沉成槽，成品图案凸起" if sink
+                            else "印章：图案凸起，成品图案凹陷"),
+        "cavity_draft_deg": draft if sink else 0.0,
         "rim_w_mm": rim_w,
         "rim_h_above_relief_mm": rim_h if rim_w > 0 else 0.0,
         "total_height_mm": round(float(total_h), 2),
@@ -921,8 +1016,10 @@ def main(argv=None):
                     f"高 {args.cutter_height} 刃 {args.cutter_edge}mm")
         else:
             note = "手柄另件：print/handle_slim.stl（φ14 × 25）"
+        if sink:
+            note = f"凹模 · 图案下沉 {D}mm · 槽壁外张 {draft}° · " + note
         p1 = render_preview(base_mm, pat_mm, B, D, job_dir / "preview.png",
-                            rim_w=rim_w, rim_h=rim_h, note=note)
+                            rim_w=rim_w, rim_h=rim_h, note=note, sink=sink)
         log(f"  预览       : {p1}")
 
     write_manifest(job_dir, job, report, args, base_stl, cutter_stl, watertight)
