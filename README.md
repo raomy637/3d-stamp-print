@@ -4,7 +4,7 @@
 
 三件分体：边框（切粘土外形）/ 底模（压图案）/ 手柄（定尺寸批量打）。尺寸链与依据见 [guides/parts.md](guides/parts.md)。建体默认走 OpenSCAD（2D 轮廓交给 CGAL），边框保留 trimesh 快路径；两条路一键切换，理由与实测见 [guides/openscad.md](guides/openscad.md)。
 
-输出怎么找：能打印的 `.stl` 全在 `print/`，其余看 `out/<图案>/`，总表是根目录 `PRINT.md`（自动生成）。约定见 [guides/output-layout.md](guides/output-layout.md)。
+输出怎么找：能打印的 `.stl` 全在 `print/`，其余看 `out/<图案>/`，总表是根目录 `PRINT.md`（自动生成）。**每次出件必配一份自包含 3D 预览 html**（模具 `out/<图案>/model.html`、手柄 `out/handles/<件名>.html`，离线双击即开）。约定见 [guides/output-layout.md](guides/output-layout.md)。
 
 整套流程也打包成了 Skill：`clay-stamp-mold`（装在 workspace 的 `.user_skills` 下），一条 `scripts/run_job.py --input 图 --job 名字` 就能跑完出件、3D 预览、手柄补料和打印清单体检。
 
@@ -12,9 +12,12 @@
 
 默认出凸模（印章）：图案凸起，压到粘土上得到凹线。加 `--relief-mode sink` 就出凹模：图案沉成带 5° 脱模锥度的槽，压出来的成品图案是**凸**的。边框和手柄两套共用，只换底模；原理、锥度取值、深度上限与坑见 [guides/cavity.md](guides/cavity.md)。
 
+
+
 ```
 python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 --relief 1.8 --relief-mode sink
 ```
+
 ## 版本与备份
 
 本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）。跑完一轮留档：`git add -A` → `git commit -m "改了什么"` → `git push`。`.gitignore` 只排除缓存、探针副本、切片产物与 OpenSCAD 便携版；STL 与 `model.html` 都入库，克隆即得完整可打状态。
@@ -23,23 +26,23 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 
 
 
-| 路径                              | 作用                                                      |
-| ------------------------------- | ------------------------------------------------------- |
-| `src/stamp_pipeline.py`         | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                |
-| `src/scad_engine.py`            | OpenSCAD 后端：多边形 → `polygon()` 模块 → 渲染 STL，`-D` 传参   |
-| `scad/`                         | 参数化模板：`base.scad` / `cutter.scad` / `handle.scad`       |
-| `src/make_handle.py`            | 手柄 STL（可 `--count` 联排，一次打一批）                            |
-| `src/make_print_index.py`       | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                       |
-| `src/viewer/make_viewer.py`     | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                       |
-| `src/tools/`                    | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图・`preview_handle_styles.py` 三款剖面・`handle_compare_board.py` 手感对比板 |
-| `print/standard/`               | 定稿可复用的标准件（手柄）                                          |
-| `print/jobs/<job>/`             | 这一单的模具：`base.stl` + `cutter.stl`                          |
-| `print/test/`                   | 试打、层高对比、实验件，随时可删                                       |
-| `out/<job>/`                    | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                      |
-| `out/handles/` `out/_archive/`  | 手柄体检图与对比记录 / 淘汰件留档                                     |
-| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`openscad.md` 引擎・`output-layout.md` 输出约定 |
-| `inputs/`                       | 源图                                                      |
-| `CHANGELOG.md`                  | 版本变更与决策记录                                               |
+| 路径                             | 作用                                                                                                                           |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/stamp_pipeline.py`        | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                                                                                     |
+| `src/scad_engine.py`           | OpenSCAD 后端：多边形 → `polygon()` 模块 → 渲染 STL，`-D` 传参                                                                            |
+| `scad/`                        | 参数化模板：`base.scad` / `cutter.scad` / `handle.scad`                                                                            |
+| `src/make_handle.py`           | 手柄 STL（可 `--count` 联排，一次打一批）                                                                                                 |
+| `src/make_print_index.py`      | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                                                                                            |
+| `src/viewer/make_viewer.py`    | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                                                                                            |
+| `src/tools/`                   | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图・`preview_handle_styles.py` 三款剖面・`handle_compare_board.py` 手感对比板 |
+| `print/standard/`              | 定稿可复用的标准件（手柄）                                                                                                                |
+| `print/jobs/<job>/`            | 这一单的模具：`base.stl` + `cutter.stl`                                                                                             |
+| `print/test/`                  | 试打、层高对比、实验件，随时可删                                                                                                             |
+| `out/<job>/`                   | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                                                                                           |
+| `out/handles/` `out/_archive/` | 手柄体检图与对比记录 / 淘汰件留档                                                                                                           |
+| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`openscad.md` 引擎・`output-layout.md` 输出约定                                      |
+| `inputs/`                      | 源图                                                                                                                           |
+| `CHANGELOG.md`                 | 版本变更与决策记录                                                                                                                    |
 
 ## 它做的事
 
@@ -90,12 +93,12 @@ python src\stamp_pipeline.py --input 图.png --out out\xxx --frame-mode ignore
 python src\stamp_pipeline.py --input 图案.png --out out\xxx --min-stroke 0.9
 
 # 2) 手柄（标准件，只在换尺寸时才重跑；平时直接打 print\standard\ 里现成的）
-python src\make_handle.py                      # 单个 -> print\standard\handle_slim.stl
-python src\make_handle.py --style column       # φ14 直筒款 -> print\standard\handle_column.stl
-python src\make_handle.py --count 6            # 一排 -> print\standard\handle_x6.stl（124×14）
-python src\make_handle.py --count 12 --cols 6  # 一盘 -> print\standard\handle_x12.stl（124×36）
+python src\make_handle.py                      # 定稿单件 -> print\standard\handle_straight.stl（φ10/φ15×25）
+python src\make_handle.py --count 6            # 一排 -> print\standard\handle_straight_x6.stl（130×15）
+python src\make_handle.py --count 12 --cols 6  # 一盘 -> print\standard\handle_straight_x12.stl（130×38）
+python src\make_handle.py --style dome         # 对照款圆顶 -> print\standard\handle_slim.stl
 python src\tools\handle_layer_test.py          # 层高对比件 3 个一排 -> print\test\handle_layer\
-python src\tools\handle_compare_board.py       # 三款各一个 -> print\test\handle_shape\compare_3.stl
+python src\tools\preview_handle_styles.py      # 三款剖面图 -> out\handles\handle_styles.png
 
 # 3) 看总表 / 体检 print\ 里能不能直接打
 python src\make_print_index.py                 # 刷新 PRINT.md
@@ -108,34 +111,34 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 
 
-| 参数                     | 默认         | 说明                                                    |
-| ---------------------- | ---------- | ----------------------------------------------------- |
-| `--size`               | 85         | 成品外形 = 边框内腔 mm；底模自动内缩 2×`cutter_clearance`            |
-| `--base-thickness`     | 3.0        | 底板厚度 mm                                               |
-| `--relief`             | 1.8        | 图案凸起高度 / 凹模槽深 mm。粘土 1.5–2.0 最合适，再高压变形            |
-| `--relief-mode`        | raise      | `raise`=印章（成品凹线）；`sink`=凹模（成品凸起，带脱模锥度）                  |
-| `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/CGAL；`mesh`=旧 trimesh 路径（快 4 倍，作回退） |
-| `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s vs `scad` 115s，默认固定 mesh                  |
-| `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（脱模会拽断细线）                            |
-| `--cavity-segments`    | 4          | 凹模锥面阶梯段数；8 更顺、面数翻倍                                |
-| `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                      |
-| `--cutter-wall`        | 1.2        | 边框墙厚 mm（0.4 喷嘴下正好 3 圈实心）                              |
-| `--cutter-height`      | 12         | 边框总高 mm（行业 12–15，粘土取 12）                              |
-| `--cutter-edge`        | 0.4        | 刃口厚度 mm（0.4–0.5 才切得动）                                 |
-| `--cutter-edge-h`      | 3.0        | 刃口锥段高度 mm（外表面向上收窄）                                    |
-| `--cutter-flange-w/-t` | 4.0 / 1.6  | 底部翼缘宽 / 厚 mm（贴床防翘 + 翻过来当握边）                           |
-| `--cutter-clearance`   | 0.4        | 底模与边框内腔的单边间隙 mm（行业标准值）                                |
-| `--no-cutter`          | 关          | 不出边框 STL                                              |
-| `--print-dir`          | print      | 可打印 STL 落到哪个目录                                        |
-| `--rim-w` / `--rim-h`  | 0 / 0.4    | 旧的一体式凸边缘（淘汰写法，>0 时与独立边框互斥）                            |
-| `--min-stroke`         | 0          | 最小线宽 mm。0.4 喷嘴填 0.9，0.2 喷嘴填 0.55                      |
-| `--grow`               | 0          | 图案整体外扩 mm，慎用（会让字糊在一起）                                 |
-| `--frame-mode`         | silhouette | `silhouette`= 框→底轮廓并丢弃；`keep`= 框保留成浮雕；`ignore`= 丢框用圆底 |
-| `--scale`              | 1          | 先放大原图（低分辨率细线补救）                                       |
-| `--no-mirror`          | 关          | 关掉镜像（只做摆件时用）                                          |
-| `--thr` / `--invert`   | 自动 / 关     | 手动二值阈值 0–255 / 白线黑底时打开                                |
-| `--simplify`           | 0.02       | 曲线简化容差 mm，越大面数越少、越硬                                   |
-| `--svg`                | 关          | 同时导出分层 SVG                                            |
+| 参数                     | 默认         | 说明                                                        |
+| ---------------------- | ---------- | --------------------------------------------------------- |
+| `--size`               | 85         | 成品外形 = 边框内腔 mm；底模自动内缩 2×`cutter_clearance`                |
+| `--base-thickness`     | 3.0        | 底板厚度 mm                                                   |
+| `--relief`             | 1.8        | 图案凸起高度 / 凹模槽深 mm。粘土 1.5–2.0 最合适，再高压变形                     |
+| `--relief-mode`        | raise      | `raise`= 印章（成品凹线）；`sink`= 凹模（成品凸起，带脱模锥度）                  |
+| `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/CGAL；`mesh`= 旧 trimesh 路径（快 4 倍，作回退） |
+| `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s vs `scad` 115s，默认固定 mesh                 |
+| `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（脱模会拽断细线）                               |
+| `--cavity-segments`    | 4          | 凹模锥面阶梯段数；8 更顺、面数翻倍                                        |
+| `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                          |
+| `--cutter-wall`        | 1.2        | 边框墙厚 mm（0.4 喷嘴下正好 3 圈实心）                                  |
+| `--cutter-height`      | 12         | 边框总高 mm（行业 12–15，粘土取 12）                                  |
+| `--cutter-edge`        | 0.4        | 刃口厚度 mm（0.4–0.5 才切得动）                                     |
+| `--cutter-edge-h`      | 3.0        | 刃口锥段高度 mm（外表面向上收窄）                                        |
+| `--cutter-flange-w/-t` | 4.0 / 1.6  | 底部翼缘宽 / 厚 mm（贴床防翘 + 翻过来当握边）                               |
+| `--cutter-clearance`   | 0.4        | 底模与边框内腔的单边间隙 mm（行业标准值）                                    |
+| `--no-cutter`          | 关          | 不出边框 STL                                                  |
+| `--print-dir`          | print      | 可打印 STL 落到哪个目录                                            |
+| `--rim-w` / `--rim-h`  | 0 / 0.4    | 旧的一体式凸边缘（淘汰写法，>0 时与独立边框互斥）                                |
+| `--min-stroke`         | 0          | 最小线宽 mm。0.4 喷嘴填 0.9，0.2 喷嘴填 0.55                          |
+| `--grow`               | 0          | 图案整体外扩 mm，慎用（会让字糊在一起）                                     |
+| `--frame-mode`         | silhouette | `silhouette`= 框→底轮廓并丢弃；`keep`= 框保留成浮雕；`ignore`= 丢框用圆底     |
+| `--scale`              | 1          | 先放大原图（低分辨率细线补救）                                           |
+| `--no-mirror`          | 关          | 关掉镜像（只做摆件时用）                                              |
+| `--thr` / `--invert`   | 自动 / 关     | 手动二值阈值 0–255 / 白线黑底时打开                                    |
+| `--simplify`           | 0.02       | 曲线简化容差 mm，越大面数越少、越硬                                       |
+| `--svg`                | 关          | 同时导出分层 SVG                                                |
 
 ## 输入图要求
 
@@ -156,7 +159,7 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
 
-手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。三款现成（斜面占比按面法线实测）：`--style dome` 圆顶 61.6%、`--style straight` φ11.8 直筒 15.8%、`--style column` φ14 直筒 9.3%（960 面，斜面最少）。批量用 `--count 6/12`；想一板比手感跑 `python src\tools\handle_compare_board.py`（三款各一个，58×14mm）。
+手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。**定稿款&#x20;**`straight`**：握柄 φ10 + 底盘 φ15 + 高 25 + 顶 R3**，斜面占比 7.7%、1,344 面、2.05cm³。`dome`（61.6%）与 `column`（9.3%）只作留档对照，不再投产。批量用 `--count 6/12`，出盘建议 `--cols 6`（130×38 更稳）。
 
 ## 边框：独立切模
 
@@ -176,7 +179,7 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 ## 打印朝向与切片
 
-底模平板贴床、图案（或凹槽）朝上、追求平整印面用光面/玻璃板（纹理 PEI 会把纹路翻印到印面）；边框翼缘贴床、刃口朝上，打完翻过来用；手柄底盘贴床直立。三件都免支撑。切片：底模 0.2 喷嘴 / 0.10 层高 / 4 墙 / 顶面熨烫，只有 0.4 喷嘴时先加 `--min-stroke 0.9`；边框与手柄的层高、brim、后处理见 [guides/printing.md](guides/printing.md)。
+底模平板贴床、图案（或凹槽）朝上、追求平整印面用光面 / 玻璃板（纹理 PEI 会把纹路翻印到印面）；边框翼缘贴床、刃口朝上，打完翻过来用；手柄底盘贴床直立。三件都免支撑。切片：底模 0.2 喷嘴 / 0.10 层高 / 4 墙 / 顶面熨烫，只有 0.4 喷嘴时先加 `--min-stroke 0.9`；边框与手柄的层高、brim、后处理见 [guides/printing.md](guides/printing.md)。
 
 旧的一体式 `--rim-w`（外沿凸起一道随底板走的墙）保留但默认关闭：它和独立边框互斥，换图案就得重打那道墙，属于被淘汰的写法。
 
@@ -184,17 +187,21 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 `src/viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
 
+
+
 ```
-python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_slim.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
+python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_straight.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
 ```
 
 当前两套都已生成：双击 `out\bakers_v3\model.html`（凸模）、`out\bakers_cav\model.html`（凹模）。界面左上角是参数面板（尺寸 / 槽深 / 是否镜像），底部按钮：分离 / 装配 / 自动旋转 / 俯视 / 侧视 / 背面（俯视验镜像、侧视看厚度、背面看粘接面）。
 
 ## 已知限制
 
-| 限制         | 现状                                                          |
-| ---------- | ----------------------------------------------------------- |
-| 边框与底模无机械限位 | 靠人手对位 + 0.4mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                     |
-| 刃口锥段是台阶近似  | 8 段分层而非真斜面，0.16 层高下能看出轻微台阶，不影响切割                            |
-| 手柄无定位销     | φ14 平面粘接，手涂 502 容易粘偏（粘接面只有 154mm²，别把胶涂到边缘外）                 |
+
+
+| 限制          | 现状                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| 边框与底模无机械限位  | 靠人手对位 + 0.4mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                                                  |
+| 刃口锥段是台阶近似   | 8 段分层而非真斜面，0.16 层高下能看出轻微台阶，不影响切割                                                         |
+| 手柄无定位销      | φ14 平面粘接，手涂 502 容易粘偏（粘接面只有 154mm²，别把胶涂到边缘外）                                              |
 | 外框识别 / 重叠部件 | 外框靠 "铺满整图 + 闭合环" 判，四边装饰不闭合时用 `--frame-mode ignore` 兜底；`unary_union` 会合并重叠图案，近而不接的保留为独立浮雕 |

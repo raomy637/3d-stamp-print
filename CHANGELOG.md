@@ -2,6 +2,15 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.2 · 2026-11-24 · 手柄定稿（柄 φ10 / 底盘 φ15）+ 出件必配预览 html
+
+- 用户拍板尺寸：握柄 φ10、底盘 φ15、总高 25、顶端 R3。`HANDLE_STRAIGHT` 改成这组值，底盘到握柄用直角台阶（朝上的环面，不算斜面），斜面只剩顶部 3mm 圆角：实测 1,344 面 / 2.05cm³ / 斜面 7.7%（垂直 64.1%）。dome 61.6%、column 9.3% 从此只作留档对照，不投产。
+- `make_handle.py` 默认出 `out/handles/<件名>.html` 自包含预览，`--no-viewer` 才跳过；`make_viewer.py` 新增 `--kind handle`，手柄预览不再显示"底板/浮雕 ?"与"已镜像"这类底模字段。
+- 定稿件出齐：`handle_straight.stl`（15×15×25）、`handle_straight_x6.stl`（130×15）、`handle_straight_x12.stl`（`--cols 6` 排成 130×38，比 11 列版 245×38 更稳）。
+- `bakers_v3` / `bakers_cav` 的 `model.html` 重出，装配视图改挂新定稿手柄。
+- 写进 Skill 硬规则：每次真正出件都必须留预览 html（模具 `out/<job>/model.html`、手柄 `out/handles/<件名>.html`），只有用户明确说不要才跳过。
+- 删掉 `print/test/handle_shape/compare_3.stl`（三款对比板，用户只打定稿款）。
+
 ## v11 · 2026-11-24 · 建体迁到 OpenSCAD（借 PJ1 的参数化建模）
 
 - 参照 3D 打印电脑 `D:\HA1\PJ1`（名字印章生成器 stampgen v2.2.8）的做法：Python 只把位图变成 2D 多边形，挤出与 3D 布尔交给 OpenSCAD/CGAL。新增 `src/scad_engine.py` 与 `scad/{base,cutter,handle}.scad`，`--engine {scad,mesh}` 默认 scad，找不到 openscad 自动回退 mesh。

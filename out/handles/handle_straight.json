@@ -1,7 +1,7 @@
 {
-  "file": "out\\_ref\\handle_straight.stl",
+  "file": "print\\standard\\handle_straight.stl",
   "engine": "scad",
-  "scad_render_s": 0.1,
+  "scad_render_s": 0.2,
   "style": "straight",
   "count": 1,
   "grid": [
@@ -10,13 +10,13 @@
   ],
   "gap_mm": 8.0,
   "height_mm": 25.0,
-  "flange_d_mm": 14.0,
-  "grip_d_mm": 11.8,
+  "flange_d_mm": 15.0,
+  "grip_d_mm": 10.0,
   "plate_size_mm": [
-    14.0,
-    14.0
+    15.0,
+    15.0
   ],
-  "triangles": 1536,
+  "triangles": 1344,
   "watertight": true,
-  "volume_cm3_one": 2.74
+  "volume_cm3_one": 2.05
 }

@@ -19,6 +19,8 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -49,19 +51,18 @@ HANDLE_PROFILE = [
 HANDLE_HEIGHT = HANDLE_PROFILE[-1][1]
 HANDLE_FLANGE_D = 14.0
 
-# 直筒版：去掉圆顶与收颈，斜面占比从 62% 降到 <10%，
-# 表面横纹主要来自斜面（FDM 垂直面最光），所以这版打出来更干净。
+# 直筒版（2026-11-24 用户定稿尺寸）：φ10 握柄 + φ15 底盘 + 顶 R3。
+# 底盘到握柄是直角台阶（朝上环面，不算斜面），斜面只剩顶部那 3mm 圆角。
 HANDLE_STRAIGHT = [
     (0.0, 0.0),
-    (7.0, 0.0),
-    (7.0, 1.4),
-    (6.2, 2.2),
-    (5.9, 3.2),
-    (5.9, 22.4),     # 直筒 φ11.8
-    (5.4, 23.6),     # 顶 R3 圆角
-    (4.0, 24.6),
-    (2.4, 25.0),
-    (0.0, 25.0),
+    (7.5, 0.0),      # 底盘 φ15
+    (7.5, 1.5),      # 底盘厚 1.5，粘接面 π·7.5² = 176.7mm²
+    (5.0, 1.5),      # 水平环台（朝上，可打，零斜面）
+    (5.0, 22.0),     # φ10 直筒
+    (4.60, 23.50),   # 顶 R3 圆角：圆心 (r2, z22)，30°
+    (3.50, 24.60),   # 60°
+    (2.00, 25.00),   # 90°，顶上留 φ4 平台
+    (0.0, 25.00),
 ]
 # 直筒升级版：口径直接给到底盘同径 φ14、取消收颈，只剩顶端 R3 圆角，
 # 斜面只存在于顶部那 3mm 环带。握持感变成 "带倒角的柱子"，横纹最少。
@@ -187,6 +188,8 @@ def main():
     ap.add_argument("--engine", choices=["scad", "mesh"], default="scad",
                     help="scad=OpenSCAD rotate_extrude（改剖面只动一个数组）；mesh=旧 revolve()")
     ap.add_argument("--json", default=None, help="体检报告输出路径；默认 out/handles/")
+    ap.add_argument("--no-viewer", action="store_true",
+                    help="跳过 3D 预览 html（默认每件都出一份，规则要求）")
     args = ap.parse_args()
 
     root = Path(__file__).resolve().parent.parent
@@ -224,7 +227,7 @@ def main():
         "grid": list(grid),
         "gap_mm": args.gap,
         "height_mm": round(float(one.bounds[1][2] - one.bounds[0][2]), 2),
-        "flange_d_mm": HANDLE_FLANGE_D,
+        "flange_d_mm": round(float(2.0 * max(r for r, _ in profile)), 1),
         "grip_d_mm": round(float(grip_d), 1),
         "plate_size_mm": [round(float(size[0]), 2), round(float(size[1]), 2)],
         "triangles": int(len(mesh.faces)),
@@ -232,7 +235,8 @@ def main():
         "volume_cm3_one": round(float(one.volume) / 1000.0, 2),
     }
     print(f"手柄 STL   : {out}")
-    print(f"  单个     : φ{HANDLE_FLANGE_D:.0f} x {info['height_mm']:.1f}mm，"
+    print(f"  单个     : 底盘 φ{info['flange_d_mm']:.1f} × 握柄 φ{info['grip_d_mm']:.1f} × "
+          f"高 {info['height_mm']:.1f}mm，"
           f"{len(one.faces)} 面，水密 {one.is_watertight}，{info['volume_cm3_one']} cm3")
     print(f"  本批     : {args.count} 个，{grid[0]}列x{grid[1]}行，"
           f"排版尺寸 {info['plate_size_mm'][0]:.0f}x{info['plate_size_mm'][1]:.0f}mm，"
@@ -242,6 +246,15 @@ def main():
     jp.parent.mkdir(parents=True, exist_ok=True)
     jp.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  报告     : {jp}")
+
+    if not args.no_viewer:
+        html = rep_dir / (out.stem + ".html")
+        cmd = [sys.executable, str(root / "src" / "viewer" / "make_viewer.py"),
+               "--stl", str(out), "--out", str(html), "--kind", "handle",
+               "--title", f"手柄 {args.style} · 底 φ{info['flange_d_mm']:.1f}"
+                          f" × 柄 φ{info['grip_d_mm']:.1f} × 高 {info['height_mm']:.1f}mm"]
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+        print(f"  预览     : {html}" if r.returncode == 0 else f"  [!] 预览失败：{r.stderr[-400:]}")
 
     try:
         from make_print_index import rebuild

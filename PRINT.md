@@ -1,7 +1,7 @@
 # 打印清单
 
 > 由 `src/make_print_index.py` 自动生成，**别手改**；重跑脚本或重新出件后会自动刷新。
-> 最近更新：2026-11-24 20:54
+> 最近更新：2026-11-24 21:02
 
 **先看这一句**：能直接丢进切片器的文件全在 `print/` 下，分三个抽屉——`standard/` 是定稿可复用的标准件，`jobs/` 是这一单要打的模具，`test/` 是试打对比件。其余目录（`out/`）都是给人看的。
 
@@ -33,6 +33,9 @@
 | `print/standard/handle_column.stl` | 14.0 × 14.0 × 25.0 | 960 | ✓ | 3.76 |
 | `print/standard/handle_column_x6.stl` | 124.0 × 14.0 × 25.0 | 5,760 | ✓ | 22.54 |
 | `print/standard/handle_column_x12.stl` | 234.0 × 36.0 × 25.0 | 11,520 | ✓ | 45.09 |
+| `print/standard/handle_straight.stl` | 15.0 × 15.0 × 25.0 | 1,344 | ✓ | 2.05 |
+| `print/standard/handle_straight_x6.stl` | 130.0 × 15.0 × 25.0 | 8,064 | ✓ | 12.29 |
+| `print/standard/handle_straight_x12.stl` | 130.0 × 38.0 × 25.0 | 16,128 | ✓ | 24.59 |
 
 打印要点：底盘贴床直立、无支撑。层高按外观给：0.4 喷嘴 0.12、要手感换 0.2 喷嘴 0.08–0.10。粘接面 φ14，502 涂一薄圈就够。
 
@@ -40,7 +43,6 @@
 
 | 文件 | 用途 | 外形 mm | 面数 | 水密 |
 |---|---|---|---|---|
-| `print/test/handle_shape/compare_3.stl` | handle_shape | 58.0 × 14.0 × 25.0 | 4,224 | ✓ |
 | `print/test/handle_layer/layer_3.stl` | handle_layer | 62.0 × 14.0 × 25.0 | 5,184 | ✓ |
 
 ## 非打印产物（都是给人看的）

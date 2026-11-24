@@ -382,6 +382,8 @@ def main():
     ap.add_argument("--report", default=None)
     ap.add_argument("--out", required=True)
     ap.add_argument("--title", default="3D 印章")
+    ap.add_argument("--kind", choices=["stamp", "handle"], default="stamp",
+                    help="stamp=底模/凹模（默认）；handle=STL 本身就是手柄，隐藏底板/浮雕与镜像状态")
     args = ap.parse_args()
 
     stamp = trimesh.load(args.stl)
@@ -418,12 +420,15 @@ def main():
     pr = []
     pr.append(row("外形 (mm)", f"{sd[0]:.0f} × {sd[1]:.0f} × {sd[2]:.1f}"))
     sink = rep.get("relief_mode") == "sink"
-    pr.append(row("底板 / 槽深" if sink else "底板 / 浮雕",
-                  f"{rep.get('base_thickness', '?')} / {rep.get('relief', '?')} mm"))
-    if sink:
-        pr.append(row("凹模锥度", f"槽壁外张 {rep.get('cavity_draft_deg', '?')}°（脱模用）", True))
-    if rep.get("rim_w_mm"):
-        pr.append(row("凸边框", f"宽 {rep['rim_w_mm']} · 顶高 {rep.get('total_height_mm')} mm", True))
+    if args.kind == "handle":
+        pr.append(row("类型", "手柄（实体件，不分正反）"))
+    else:
+        pr.append(row("底板 / 槽深" if sink else "底板 / 浮雕",
+                      f"{rep.get('base_thickness', '?')} / {rep.get('relief', '?')} mm"))
+        if sink:
+            pr.append(row("凹模锥度", f"槽壁外张 {rep.get('cavity_draft_deg', '?')}°（脱模用）", True))
+        if rep.get("rim_w_mm"):
+            pr.append(row("凸边框", f"宽 {rep['rim_w_mm']} · 顶高 {rep.get('total_height_mm')} mm", True))
     if args.cutter:
         cu = rep.get("cutter") or {}
         pr.append(row("边框（切模）", f"内腔 {rd[0]:.0f} · 高 {rd[2]:.1f} · 壁 {cu.get('wall_mm','?')} mm", True))
@@ -434,8 +439,9 @@ def main():
     if rep.get("stroke_stats_mm"):
         s = rep["stroke_stats_mm"]
         pr.append(row("线宽 min/中位", f"{s['min']} / {s['median']} mm"))
-    pr.append(row("镜像", ("已镜像（凹模）" if sink else "已镜像（凸版）")
-                  if rep.get("mirrored", True) else "未镜像"))
+    if args.kind != "handle":
+        pr.append(row("镜像", ("已镜像（凹模）" if sink else "已镜像（凸版）")
+                      if rep.get("mirrored", True) else "未镜像"))
 
     params_html = "\n  ".join(pr)
 

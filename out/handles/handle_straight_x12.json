@@ -1,0 +1,22 @@
+{
+  "file": "print\\standard\\handle_straight_x12.stl",
+  "engine": "scad",
+  "scad_render_s": 0.2,
+  "style": "straight",
+  "count": 12,
+  "grid": [
+    6,
+    2
+  ],
+  "gap_mm": 8.0,
+  "height_mm": 25.0,
+  "flange_d_mm": 15.0,
+  "grip_d_mm": 10.0,
+  "plate_size_mm": [
+    130.0,
+    38.0
+  ],
+  "triangles": 16128,
+  "watertight": true,
+  "volume_cm3_one": 2.05
+}
