@@ -1,0 +1,11 @@
+item,input,size,relief,mode
+t01,inputs/bakers_framed.png,70,1.5,raise
+t02,inputs/bakers_framed.png,80,1.8,raise
+t03,inputs/bakers_framed.png,85,1.8,raise
+t04,inputs/bakers_framed.png,90,2.0,raise
+t05,inputs/bakers_framed.png,85,1.8,sink
+t06,inputs/bakers_framed.png,75,1.6,sink
+t07,inputs/bakers_framed.png,80,2.0,sink
+t08,inputs/bakers_framed.png,95,1.8,raise
+t09,inputs/bakers_framed.png,65,1.5,raise
+t10,inputs/bakers_framed.png,85,2.0,raise

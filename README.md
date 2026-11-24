@@ -28,15 +28,16 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | `src/scad_engine.py`           | OpenSCAD 后端：多边形 → `polygon()` 模块 → 渲染 STL，`-D` 传参                                                                            |
 | `scad/`                        | 参数化模板：`base.scad` / `cutter.scad` / `handle.scad`                                                                            |
 | `src/make_handle.py`           | 手柄 STL（可 `--count` 联排，一次打一批）                                                                                                 |
-| `src/make_print_index.py`      | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                                                                                            |
+| `src/make_print_index.py`      | 扫 `print/` 生成根目录 `PRINT.md`（打印总表，兼容 `jobs/<批次>/<单号>/` 两级）                                                                                            |
+| `src/batch_molds.py`           | 批量出模：清单 CSV → 并行 N 路 → 配对目录 + 批次 `INDEX.md` / `batch.json`                                                                                            |
 | `src/viewer/make_viewer.py`    | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄；默认叠放装配视角）                                                                                            |
 | `src/tools/`                   | `handle_layer_test.py` 层高对比件・`preview_handle_batch.py` 联排俯视图・`preview_handle_styles.py` 三款剖面・`handle_compare_board.py` 手感对比板 |
 | `print/standard/`              | 定稿可复用的标准件（手柄）                                                                                                                |
-| `print/jobs/<job>/`            | 这一单的模具：`base.stl` + `cutter.stl`                                                                                             |
-| `print/test/`                  | 试打、层高对比、实验件，随时可删                                                                                                             |
-| `out/<job>/`                   | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                                                                                           |
+| `print/jobs/<job>/`            | 这一单的模具：`base.stl` + `cutter.stl`；批量时是 `jobs/<批次>/<单号>/` 两级 |
+| `print/test/`                  | 试打、层高对比、实验件，随时可删                                             |
+| `out/<job>/`                   | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）；批量时 `out/<批次>/<单号>/` + `INDEX.md` |
 | `out/handles/` `out/_archive/` | 手柄体检图与对比记录 / 淘汰件留档                                                                                                           |
-| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`openscad.md` 引擎・`output-layout.md` 输出约定                                      |
+| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`openscad.md` 引擎・`batch.md` 批量・`output-layout.md` 输出约定                                      |
 | `inputs/`                      | 源图                                                                                                                           |
 | `CHANGELOG.md`                 | 版本变更与决策记录                                                                                                                    |
 
@@ -91,7 +92,14 @@ python src\tools\preview_handle_styles.py      # 三款剖面图 -> out\handles\
 # 3) 看总表 / 体检 print\ 里能不能直接打
 python src\make_print_index.py                 # 刷新 PRINT.md
 python src\make_print_index.py --check         # 只查不改，退出码 0 = 全部可打
+
+# 4) 一次出一整批（10 / 20 / 40 套完全不同的模具，并行跑）
+python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --jobs 8
+python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 2   # 先试跑两套
 ```
+
+批量清单是 CSV（`item,input,size,relief,mode` 五列，缺省 85 / 1.8 / raise），单号只管起名，路径由脚本拼：**每套的底模和边框一定落在同一个单号目录里**——`print/jobs/<批次>/<单号>/{base,cutter}.stl`，记录在 `out/<批次>/<单号>/`，批次总表是 `out/<批次>/INDEX.md`（配对、成品尺寸、面数、水密、耗时一行一套）。实测 i5-13400 / 8 路并行：**10 套 51s、40 套 96s**（单套 2.4s，比串行快 5 倍）。命名规则、失败处理与提速原理见 [guides/batch.md](guides/batch.md)。
+
 
 产出分两处：`print/` 只放可打印 `.stl`（`standard/` 标准件、`jobs/<job>/` 这一单、`test/` 试打件），`out/<job>/` 放给人看的记录。细节见 [guides/output-layout.md](guides/output-layout.md)。
 
@@ -136,10 +144,10 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 
 | 项  | 值                                 |
 | -- | --------------------------------- |
-| 底盘 | φ14 × 1.4mm（粘接面 154mm²，502 一薄圈就够） |
-| 握柄 | φ9.8–11，轻微腰形（拇指食指捏）               |
+| 底盘 | φ15 × 1.5mm（粘接面 176.7mm²，502 一薄圈就够） |
+| 握柄 | φ10 直筒，直角台阶从底盘起，顶 R3 圆角（留 φ4 平顶） |
 | 总高 | 25mm（小把手，捏着按，不占地方）                |
-| 网格 | 1,728 面，水密，2.03 cm³/ 个            |
+| 网格 | 1,344 面，水密，2.05 cm³/ 个            |
 
 为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
 

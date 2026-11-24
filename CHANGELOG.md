@@ -2,6 +2,15 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.6 · 2026-11-24 · 批量出模（10–40 套）+ 性能压到 40 套 96 秒
+
+- 新增 `src/batch_molds.py`：读 CSV 清单（`item,input,size,relief,mode`），并行 N 路跑 `stamp_pipeline`，一套一个子进程。实测 i5-13400 / 8 路：**10 套 51s、40 套 96s**（40/40 成功、40/40 水密、40/40 配对齐全）。
+- 目录改成两级，配对关系由路径保证：`print/jobs/<批次>/<单号>/{base,cutter}.stl` + `out/<批次>/<单号>/` + `out/<批次>/{INDEX.md,batch.json}`。旧单层结构继续兼容（`make_print_index.py` 先判 `base.stl` 存在则当单套，否则遍历一层当批次）。
+- `stamp_pipeline.py` 加 `--job`（可含 `批次/单号`）与 `--no-index`；`write_manifest` 里写死的 `<job>` 全部改成实际 job，不再出现 `print/jobs/<job>/` 这种占位串。
+- `make_print_index.py`：两级扫描 + `probe()` 结果按 `mtime+size` 缓存在 `.cache/probe.json`，索引重建 4.1s → 0.4s。
+- 性能四层：① OpenSCAD nightly（2026.11.23）+ Manifold 后端，底模渲染 21.9s → 1.0s；② 进程级并行；③ 批量时 `--no-index`，批次结束只刷一次；④ STL 体检缓存。单套剩余 10.3s 里约 4.7s 是 Python 导入，1s 是 OpenSCAD，其余是轮廓提取与布尔——不再深挖（40 套 96s 已够用）。
+- 新增 `guides/batch.md`：命名规则、清单格式、性能实测与依据、失败处理、坑。README 加「一次出一整批」段落并修掉手柄表格里残留的 dome 旧数据（φ14/1,728 面）。`.gitignore` 加 `tools/openscad_nightly/`（224MB）与 `.cache/`。
+
 ## v11.5 · 2026-11-24 · 全库对齐：旧单归档、凹模重出、层高对比件换定稿手柄
 
 - `bakers_v3` / `bakers_v4` 的打印件从 `print/jobs` 移到 `out/_archive/<job>/print`（只归档不删除），打印清单从此只列当前单：`bakers_v5`（凸模）与 `bakers_cav`（凹模）。

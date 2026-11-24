@@ -24,12 +24,20 @@ SCAD_DIR = REPO / "scad"
 
 
 def find_openscad() -> Path | None:
-    """按 环境变量 -> repo 内 tools/ -> PATH 的顺序找 openscad 可执行文件。"""
+    """顺序：环境变量 -> repo 内 nightly（Manifold，快 20×）-> repo 内 2021.01 -> PATH。"""
     env = os.environ.get("OPENSCAD_BIN")
     if env:
         p = Path(env)
         if p.is_file():
             return p
+    nightly = REPO / "tools" / "openscad_nightly"
+    if nightly.is_dir():
+        for p in sorted(nightly.glob("*/openscad.com"), reverse=True):
+            if p.is_file():
+                return p
+        for p in sorted(nightly.glob("*/openscad.exe"), reverse=True):
+            if p.is_file():
+                return p
     for name in ("openscad.com", "openscad.exe"):
         p = REPO / "tools" / "openscad" / name
         if p.is_file():

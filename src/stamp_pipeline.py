@@ -633,13 +633,13 @@ def write_manifest(job_dir: Path, job: str, report: dict, args,
          f"> 由 `stamp_pipeline.py` 自动生成（{t}），别手改。",
          f"> 输入 `{Path(args.input).name}` · 成品 {args.size}mm · {mode_txt} · "
          f"底板 {args.base_thickness}mm · 最小线宽 {args.min_stroke or '不改'}", "",
-         "## 可以直接打印（都在 `print/jobs/<job>/`）", "",
+         f"## 可以直接打印（都在 `print/jobs/{job}/`）", "",
          "| 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |", "|---|---|---|---|---|---|"]
     for label, p in (("底模" if not sink else "凹模", base_stl), ("边框", cutter_stl)):
         if not p:
             continue
         size, faces, wt, vol = _probe(p)
-        L.append(f"| {label} | `print/jobs/{Path(p).parent.name}/{Path(p).name}` | "
+        L.append(f"| {label} | `print/jobs/{job}/{Path(p).name}` | "
                  f"{size[0]} × {size[1]} × {size[2]} | "
                  f"{faces:,} | {'✓' if wt else '×'} | {vol} |")
     if not cutter_stl:
@@ -736,6 +736,11 @@ def main(argv=None):
     ap.add_argument("--svg", action="store_true", help="同时导出分层 SVG")
     ap.add_argument("--print-dir", default="print",
                     help="可打印 STL 的根目录（默认 print/；每单落到 print/jobs/<job>/）")
+    ap.add_argument("--job", default=None,
+                    help="打印目录里的单号，可带批次子目录（如 xmas40/snowman_A）；"
+                         "默认取 --out 的最后一段目录名")
+    ap.add_argument("--no-index", action="store_true",
+                    help="不刷新根目录 PRINT.md（批量出件时用，批次结束统一刷一次）")
     args = ap.parse_args(argv)
 
     # ---- 输出布局（约定见 guides/output-layout.md）
@@ -744,7 +749,7 @@ def main(argv=None):
     #   out/<job>/                     其余全部（report / preview / svg / model / MANIFEST）
     out = Path(args.out)
     job_dir = out.with_suffix("") if out.suffix else out      # 兼容老写法 --out out\x.stl
-    job = job_dir.name
+    job = args.job.strip("/") if args.job else job_dir.name
     pdir = Path(args.print_dir)
     job_print = pdir / "jobs" / job
     job_print.mkdir(parents=True, exist_ok=True)
@@ -1102,7 +1107,10 @@ def main(argv=None):
     if not watertight:
         log("  [!] 网格非水密，切片前请在 Bambu Studio 里做一次修复")
 
-    refresh_print_index()
+    if getattr(args, "no_index", False):
+        log("  清单       : 跳过 PRINT.md（--no-index）")
+    else:
+        refresh_print_index()
     return 0
 
 

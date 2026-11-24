@@ -20,6 +20,11 @@ desktop.ini
 
 # OpenSCAD 便携版（43MB，各机自备，不入库）
 tools/openscad/
+# OpenSCAD nightly（224MB，Manifold 后端，各机自备）
+tools/openscad_nightly/
+
+# 探测缓存（PRINT.md 的 STL 体检结果，按 mtime+size 失效）
+.cache/
 
 # OpenSCAD 中间件：job.scad 内联了全部顶点（单件 220KB），可从 STL/原图重建
 out/*/scad/

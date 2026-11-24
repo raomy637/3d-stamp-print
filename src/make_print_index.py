@@ -38,12 +38,45 @@ def info_path(f: Path) -> str:
         return f.name
 
 
+CACHE_P = ROOT / ".cache" / "probe.json"
+_CACHE = None
+
+
+def _cache():
+    global _CACHE
+    if _CACHE is None:
+        try:
+            _CACHE = json.loads(CACHE_P.read_text(encoding="utf-8"))
+        except Exception:                  # noqa: BLE001
+            _CACHE = {}
+    return _CACHE
+
+
+def _cache_save():
+    try:
+        CACHE_P.parent.mkdir(parents=True, exist_ok=True)
+        CACHE_P.write_text(json.dumps(_CACHE, ensure_ascii=False), encoding="utf-8")
+    except Exception:                      # noqa: BLE001
+        pass
+
+
 def probe(path: Path):
-    """读 STL 拿尺寸 / 面数 / 水密。失败返回 None。"""
+    """读 STL 拿尺寸 / 面数 / 水密（按 mtime+size 缓存，复用时不重读网格）。"""
+    c = _cache()
+    key = info_path(path)
+    try:
+        st = path.stat()
+        hit = c.get(key)
+        if hit and hit.get("m") == int(st.st_mtime) and hit.get("n") == st.st_size:
+            info = dict(hit["v"])
+            info["file"] = path
+            return info
+    except Exception:                      # noqa: BLE001
+        return None
     try:
         m = trimesh.load(str(path), force="mesh")
         b = m.bounds
-        return {
+        info = {
             "file": path,
             "rel": info_path(path),
             "size": [round(float(b[1][i] - b[0][i]), 1) for i in range(3)],
@@ -51,7 +84,10 @@ def probe(path: Path):
             "watertight": bool(m.is_watertight),
             "volume_cm3": round(float(m.volume) / 1000.0, 2),
         }
-    except Exception:
+        v = {k: val for k, val in info.items() if k != "file"}
+        c[key] = {"m": int(st.st_mtime), "n": st.st_size, "v": v}
+        return info
+    except Exception:                      # noqa: BLE001
         return None
 
 
@@ -78,12 +114,10 @@ def collect():
             continue
         standard.append(info)
 
-    # ---- 订单：一单一个子目录，base/cutter 各一件
+    # ---- 订单：一单一个目录（base/cutter 配对）；也支持 jobs/<批次>/<单>/ 两级
     jobs_dir = PRINT_DIR / "jobs"
     if jobs_dir.exists():
-        for d in sorted([p for p in jobs_dir.glob("*") if p.is_dir()],
-                        key=lambda p: p.stat().st_mtime, reverse=True):
-            job = d.name
+        def scan_job(d: Path, label: str, bad=bad, jobs=jobs):
             for part in ("base", "cutter"):
                 f = d / f"{part}.stl"
                 if not f.exists():
@@ -92,13 +126,22 @@ def collect():
                 if info is None:
                     bad.append(f"{info_path(f)}（读取失败）")
                     continue
-                jobs.setdefault(job, {})[part] = info
+                jobs.setdefault(label, {})[part] = info
             for f in [p for p in d.glob("*.stl") if p.stem not in ("base", "cutter")]:
                 info = probe(f)
                 if info is None:
                     bad.append(f"{info_path(f)}（读取失败）")
                 else:
-                    jobs.setdefault(job, {})[f.stem] = info
+                    jobs.setdefault(label, {})[f.stem] = info
+
+        for d in sorted([p for p in jobs_dir.glob("*") if p.is_dir()],
+                        key=lambda p: p.stat().st_mtime, reverse=True):
+            if (d / "base.stl").exists() or (d / "cutter.stl").exists():
+                scan_job(d, d.name)
+            else:                       # 批次目录：里面每个子目录是一单
+                for s in sorted([p for p in d.glob("*") if p.is_dir()],
+                                key=lambda p: p.stat().st_mtime, reverse=True):
+                    scan_job(s, f"{d.name}/{s.name}")
 
     # ---- 测试件：可放子目录，不要求配对
     test_dir = PRINT_DIR / "test"
@@ -204,6 +247,7 @@ def rebuild(write=True) -> int:
     md = render(data)
     if write:
         (ROOT / "PRINT.md").write_text(md, encoding="utf-8")
+        _cache_save()
         print(f"PRINT.md 已更新：{len(data['jobs'])} 单 / {len(data['standard'])} 个标准件 / "
               f"{len(data['tests'])} 个测试件"
               + (f"，{len(data['bad'])} 条待处理" if data["bad"] else ""))
