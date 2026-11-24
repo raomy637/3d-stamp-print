@@ -1,0 +1,33 @@
+{
+  "input": "inputs\\bakers_plain.png",
+  "size_mm": 80.0,
+  "base_thickness": 3.0,
+  "relief": 1.8,
+  "rim_w_mm": 4.0,
+  "rim_h_above_relief_mm": 0.4,
+  "total_height_mm": 5.2,
+  "mirrored": true,
+  "min_stroke_mm": 0.0,
+  "bbox_mm": [
+    80.0,
+    80.0,
+    5.2
+  ],
+  "triangles": 51502,
+  "watertight": true,
+  "volume_cm3": 18.97,
+  "pattern_parts": 37,
+  "thin_parts_fixed": 0,
+  "thin_parts_at_risk": 0,
+  "stroke_stats_mm": {
+    "parts": 35,
+    "min": 0.55,
+    "p10": 1.2,
+    "median": 1.44,
+    "max": 2.45,
+    "lt_0.5": 0,
+    "lt_0.6": 1,
+    "lt_0.8": 1,
+    "lt_1.0": 1
+  }
+}

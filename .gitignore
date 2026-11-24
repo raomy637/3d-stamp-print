@@ -1,0 +1,19 @@
+# 缓存与临时件（不入库）
+__pycache__/
+*.pyc
+*.pyo
+
+# 查看器调参用的临时副本 / 截图探针
+_p_*.html
+probe_*.html
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 切片器产物（本项目只存 STL 源件，切片结果不入库）
+*.gcode
+*.3mf

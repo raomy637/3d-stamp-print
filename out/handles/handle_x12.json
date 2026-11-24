@@ -1,0 +1,19 @@
+{
+  "file": "handles\\handle_slim_x12.stl",
+  "count": 12,
+  "grid": [
+    6,
+    2
+  ],
+  "gap_mm": 8.0,
+  "height_mm": 25.0,
+  "flange_d_mm": 14.0,
+  "grip_d_mm": 11.0,
+  "plate_size_mm": [
+    124.0,
+    36.0
+  ],
+  "triangles": 20736,
+  "watertight": true,
+  "volume_cm3_one": 2.03
+}

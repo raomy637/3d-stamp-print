@@ -1,0 +1,30 @@
+{
+  "input": "D:\\opencode\\3D-stamp-print\\inputs\\bakers_framed.png",
+  "size_mm": 85.0,
+  "base_thickness": 3.0,
+  "relief": 1.8,
+  "mirrored": true,
+  "min_stroke_mm": 0.0,
+  "bbox_mm": [
+    85.0,
+    85.0,
+    4.8
+  ],
+  "triangles": 58086,
+  "watertight": true,
+  "volume_cm3": 18.91,
+  "pattern_parts": 35,
+  "thin_parts_fixed": 0,
+  "thin_parts_at_risk": 0,
+  "stroke_stats_mm": {
+    "parts": 35,
+    "min": 0.59,
+    "p10": 1.26,
+    "median": 1.54,
+    "max": 2.6,
+    "lt_0.5": 0,
+    "lt_0.6": 1,
+    "lt_0.8": 1,
+    "lt_1.0": 1
+  }
+}
