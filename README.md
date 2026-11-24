@@ -2,7 +2,7 @@
 
 一张线稿 → 可直接切片的粘土饼干模具 STL。换图案只改 `--input`，其余参数复用。
 
-三件分体：边框（切粘土外形）/ 底模（压图案）/ 手柄（定尺寸批量打）。尺寸链与依据见 [guides/parts.md](guides/parts.md)。
+三件分体：边框（切粘土外形）/ 底模（压图案）/ 手柄（定尺寸批量打）。尺寸链与依据见 [guides/parts.md](guides/parts.md)。建体默认走 OpenSCAD（2D 轮廓交给 CGAL），边框保留 trimesh 快路径；两条路一键切换，理由与实测见 [guides/openscad.md](guides/openscad.md)。
 
 输出怎么找：能打印的 `.stl` 全在 `print/`，其余看 `out/<图案>/`，总表是根目录 `PRINT.md`（自动生成）。约定见 [guides/output-layout.md](guides/output-layout.md)。
 
@@ -15,12 +15,9 @@
 ```
 python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 --relief 1.8 --relief-mode sink
 ```
-
 ## 版本与备份
 
-本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）。跑完一轮留档：`git add -A` → `git commit -m "改了什么"` → `git push`。
-
-`.gitignore` 只排除缓存与探针副本（`__pycache__`、`_p_*.html`）和切片产物（`*.gcode`、`*.3mf`）；STL 与 `model.html` 都入库，克隆即得完整可打状态。
+本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）。跑完一轮留档：`git add -A` → `git commit -m "改了什么"` → `git push`。`.gitignore` 只排除缓存、探针副本、切片产物与 OpenSCAD 便携版；STL 与 `model.html` 都入库，克隆即得完整可打状态。
 
 ## 文件
 
@@ -29,6 +26,8 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | 路径                              | 作用                                                      |
 | ------------------------------- | ------------------------------------------------------- |
 | `src/stamp_pipeline.py`         | 线稿 → 底模 STL + 边框 STL + 清单 + 预览图 + 可选 SVG                |
+| `src/scad_engine.py`            | OpenSCAD 后端：多边形 → `polygon()` 模块 → 渲染 STL，`-D` 传参   |
+| `scad/`                         | 参数化模板：`base.scad` / `cutter.scad` / `handle.scad`       |
 | `src/make_handle.py`            | 手柄 STL（可 `--count` 联排，一次打一批）                            |
 | `src/make_print_index.py`       | 扫 `print/` 生成根目录 `PRINT.md`（打印总表）                       |
 | `src/viewer/make_viewer.py`     | 把 STL 打包成单文件离线 HTML 预览（可带边框 / 手柄）                       |
@@ -38,7 +37,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | `print/test/`                   | 试打、层高对比、实验件，随时可删                                       |
 | `out/<job>/`                    | 每次运行的全部记录（清单 / 报告 / 预览 / SVG / 3D）                      |
 | `out/handles/` `out/_archive/`  | 手柄体检图与对比记录 / 淘汰件留档                                     |
-| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`output-layout.md` 输出约定 |
+| `guides/`                      | `parts.md` 尺寸链・`cavity.md` 凹模・`printing.md` 切片・`openscad.md` 引擎・`output-layout.md` 输出约定 |
 | `inputs/`                       | 源图                                                      |
 | `CHANGELOG.md`                  | 版本变更与决策记录                                               |
 
@@ -49,7 +48,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 ```
 线稿 PNG ─► 二值化/去噪 ─► 外框识别 ─► 线宽体检 ─► 矢量化(含孔洞) ─► 镜像 X ─► 缩放到 --size ─► 居中
               └─► 外框 → 底面轮廓（异形边自动继承）
-                            ├─► 底面/图案 2D 布尔 ─► 拉伸 ─► 底模 STL（水密）
+                            ├─► 2D 布尔 + 挤出（OpenSCAD/CGAL，可回退 trimesh）─► 底模 STL（水密）
                             └─► 同轮廓 buffer(墙/翼缘) ─► 外表面收成刃口 ─► 边框 STL（水密）
 ```
 
@@ -70,6 +69,8 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 ```
 python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-earcut manifold3d
 ```
+
+`--engine scad` 还要 OpenSCAD 2021.01（约 43MB，不进 git）：放 `tools\openscad\`、设 `OPENSCAD_BIN`、或装进 PATH 三者任一；找不到会自动回退 mesh 并给出提示。
 
 ## 用法
 
@@ -99,7 +100,7 @@ python src\make_print_index.py                 # 刷新 PRINT.md
 python src\make_print_index.py --check         # 只查不改，退出码 0 = 全部可打
 ```
 
-产出分两处。`print/` 只放可打印 `.stl`，内部分三个抽屉：`standard/`（定稿可复用的标准件，例如手柄）、`jobs/<job>/`（这一单的 `base.stl` + `cutter.stl`）、`test/`（试打对比件）；`out/<job>/` 放给人看的东西（MANIFEST.md、report.json、preview.png、lines.svg、model.html）。布局细节见 [guides/output-layout.md](guides/output-layout.md)。
+产出分两处：`print/` 只放可打印 `.stl`（`standard/` 标准件、`jobs/<job>/` 这一单、`test/` 试打件），`out/<job>/` 放给人看的记录。细节见 [guides/output-layout.md](guides/output-layout.md)。
 
 ## 参数
 
@@ -111,6 +112,8 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 | `--base-thickness`     | 3.0        | 底板厚度 mm                                               |
 | `--relief`             | 1.8        | 图案凸起高度 / 凹模槽深 mm。粘土 1.5–2.0 最合适，再高压变形            |
 | `--relief-mode`        | raise      | `raise`=印章（成品凹线）；`sink`=凹模（成品凸起，带脱模锥度）                  |
+| `--engine`             | scad       | 建体引擎：`scad`=OpenSCAD/CGAL；`mesh`=旧 trimesh 路径（快 4 倍，作回退） |
+| `--cutter-engine`      | mesh       | 边框引擎：`mesh` 0.5s vs `scad` 115s，默认固定 mesh                  |
 | `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（脱模会拽断细线）                            |
 | `--cavity-segments`    | 4          | 凹模锥面阶梯段数；8 更顺、面数翻倍                                |
 | `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                      |
@@ -149,11 +152,9 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 | 总高 | 25mm（小把手，捏着按，不占地方）                |
 | 网格 | 1,728 面，水密，2.03 cm³/ 个            |
 
-为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。
+为什么必须分件：一体打印且图案朝上时，手柄在底面一侧必然悬空、要支撑；主流做法（MakerWorld 的 Cat Paw 印章、Instructables 曲奇模）都是手柄站立打印 + 502 粘背面。分件的额外好处是换图案不用重打手柄，坏一个只补一个。粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
 
-粘接：两个平面用酒精擦净 → 底模背面中心涂一圈 502 → 手柄底盘压上，保持 30 秒。
-
-要换款式就改 `make_handle.py` 里的 `HANDLE_PROFILE`（一串 `(半径, 高度)`），重跑脚本即可，底模一行不用动。现成件：`print\handle_slim.stl`（单个）、`print\handle_x6.stl`（一排）、`print\handle_x12.stl`（一盘）。
+手柄剖面在 `make_handle.py` 里就是一个 `(半径, 高度)` 数组，改一行重跑即可。两款现成：`--style dome`（圆顶，斜面占 61.6%）、`--style straight`（直筒 + 顶 R3，斜面降到 18.6%，表面横纹明显更少）。批量用 `--count 6/12`，件分别是 `print\standard\handle_slim.stl`、`handle_x6.stl`、`handle_x12.stl`。
 
 ## 边框：独立切模
 
@@ -182,9 +183,7 @@ python src\make_print_index.py --check         # 只查不改，退出码 0 = �
 `src/viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联、网格量化成 uint16 内嵌，双击即开、不联网。
 
 ```
-python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl `
-    --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_slim.stl `
-    --report out\bakers_v3\report.json --out out\bakers_v3\model.html
+python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl --cutter print\jobs\bakers_v3\cutter.stl --handle print\standard\handle_slim.stl --report out\bakers_v3\report.json --out out\bakers_v3\model.html
 ```
 
 当前两套都已生成：双击 `out\bakers_v3\model.html`（凸模）、`out\bakers_cav\model.html`（凹模）。界面左上角是参数面板（尺寸 / 槽深 / 是否镜像），底部按钮：分离 / 装配 / 自动旋转 / 俯视 / 侧视 / 背面（俯视验镜像、侧视看厚度、背面看粘接面）。
@@ -196,5 +195,4 @@ python src\viewer\make_viewer.py --stl print\jobs\bakers_v3\base.stl `
 | 边框与底模无机械限位 | 靠人手对位 + 0.4mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                     |
 | 刃口锥段是台阶近似  | 8 段分层而非真斜面，0.16 层高下能看出轻微台阶，不影响切割                            |
 | 手柄无定位销     | φ14 平面粘接，手涂 502 容易粘偏（粘接面只有 154mm²，别把胶涂到边缘外）                 |
-| 外框识别是启发式   | 靠 "铺满整图 + 闭合环"，四边都有装饰且不闭合的构图可能判错，用 `--frame-mode ignore` 兜底 |
-| 重叠部件会被合并   | `unary_union` 合并重叠图案；相距很近但不接触的保留为独立浮雕                       |
+| 外框识别 / 重叠部件 | 外框靠 "铺满整图 + 闭合环" 判，四边装饰不闭合时用 `--frame-mode ignore` 兜底；`unary_union` 会合并重叠图案，近而不接的保留为独立浮雕 |

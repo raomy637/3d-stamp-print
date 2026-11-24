@@ -1,13 +1,13 @@
 # bakers_cav · 输出清单
 
-> 由 `stamp_pipeline.py` 自动生成（2026-11-24 19:33），别手改。
+> 由 `stamp_pipeline.py` 自动生成（2026-11-24 20:45），别手改。
 > 输入 `bakers_framed.png` · 成品 85.0mm · 凹模（图案下沉 1.8mm，成品图案凸起，槽壁外张 5.0°） · 底板 3.0mm · 最小线宽 不改
 
 ## 可以直接打印（都在 `print/jobs/<job>/`）
 
 | 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |
 |---|---|---|---|---|---|
-| 凹模 | `print/jobs/bakers_cav/base.stl` | 84.2 × 84.2 × 3.0 | 144,648 | ✓ | 14.65 |
+| 凹模 | `print/jobs/bakers_cav/base.stl` | 84.2 × 84.2 × 3.0 | 47,980 | ✓ | 14.91 |
 | 边框 | `print/jobs/bakers_cav/cutter.stl` | 95.4 × 95.4 × 12.0 | 58,930 | ✓ | 5.62 |
 
 ## 只给人看

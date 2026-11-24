@@ -1,5 +1,8 @@
 {
   "input": "inputs\\bakers_framed.png",
+  "engine": "scad",
+  "engine_note": "2D 轮廓交给 OpenSCAD/CGAL 挤出与布尔",
+  "scad_render_s": 19.3,
   "size_mm": 85.0,
   "size_semantics": "成品尺寸（分体模式下 = 边框内腔；底模再内缩 cutter_clearance）",
   "stamp_size_mm": [
@@ -8,6 +11,9 @@
   ],
   "base_thickness": 3.0,
   "relief": 1.8,
+  "relief_mode": "raise",
+  "relief_mode_note": "印章：图案凸起，成品图案凹陷",
+  "cavity_draft_deg": 0.0,
   "rim_w_mm": 0.0,
   "rim_h_above_relief_mm": 0.0,
   "total_height_mm": 4.8,
@@ -18,7 +24,7 @@
     84.2,
     4.8
   ],
-  "triangles": 56194,
+  "triangles": 37876,
   "watertight": true,
   "volume_cm3": 18.56,
   "pattern_parts": 35,
@@ -36,7 +42,7 @@
     "lt_1.0": 1
   },
   "cutter": {
-    "file": "print\\bakers_v3_cutter.stl",
+    "file": "print\\jobs\\bakers_v3\\cutter.stl",
     "inner_size_mm": [
       85.0,
       85.0
@@ -50,10 +56,10 @@
       1.6
     ],
     "clearance_mm": 0.4,
-    "triangles": 58930,
+    "triangles": 25524,
     "watertight": true
   },
   "handle": {
-    "note": "独立标准件，见 handles/handle_slim.stl（make_handle.py）"
+    "note": "独立标准件，见 print/standard/handle_slim.stl（src/make_handle.py）"
   }
 }

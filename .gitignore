@@ -17,3 +17,14 @@ desktop.ini
 # 切片器产物（本项目只存 STL 源件，切片结果不入库）
 *.gcode
 *.3mf
+
+# OpenSCAD 便携版（43MB，各机自备，不入库）
+tools/openscad/
+
+# OpenSCAD 中间件：job.scad 内联了全部顶点（单件 220KB），可从 STL/原图重建
+out/*/scad/
+out/*/_scad/
+print/_tmp/
+
+# 探针与竞品解包（10MB，比对面用，不入库）
+out/_ref/

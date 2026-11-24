@@ -1,5 +1,8 @@
 {
   "input": "inputs\\bakers_framed.png",
+  "engine": "scad",
+  "engine_note": "2D 轮廓交给 OpenSCAD/CGAL 挤出与布尔",
+  "scad_render_s": 25.6,
   "size_mm": 85.0,
   "size_semantics": "成品尺寸（分体模式下 = 边框内腔；底模再内缩 cutter_clearance）",
   "stamp_size_mm": [
@@ -21,9 +24,9 @@
     84.2,
     3.0
   ],
-  "triangles": 144648,
+  "triangles": 47980,
   "watertight": true,
-  "volume_cm3": 14.65,
+  "volume_cm3": 14.91,
   "pattern_parts": 35,
   "thin_parts_fixed": 0,
   "thin_parts_at_risk": 0,

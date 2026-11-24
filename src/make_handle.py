@@ -24,6 +24,11 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
+try:                       # 同目录模块（脚本直接运行时可用）
+    import scad_engine
+except ImportError:        # 作为包导入时
+    from . import scad_engine
+
 # --------------------------------------------------------------------------- #
 # 尺寸（改这里就等于换一款手柄；改完重跑本脚本，章体不用动）
 # --------------------------------------------------------------------------- #
@@ -43,6 +48,22 @@ HANDLE_PROFILE = [
 ]
 HANDLE_HEIGHT = HANDLE_PROFILE[-1][1]
 HANDLE_FLANGE_D = 14.0
+
+# 直筒版：去掉圆顶与收颈，斜面占比从 62% 降到 <10%，
+# 表面横纹主要来自斜面（FDM 垂直面最光），所以这版打出来更干净。
+HANDLE_STRAIGHT = [
+    (0.0, 0.0),
+    (7.0, 0.0),
+    (7.0, 1.4),
+    (6.2, 2.2),
+    (5.9, 3.2),
+    (5.9, 22.4),     # 直筒 φ11.8
+    (5.4, 23.6),     # 顶 R3 圆角
+    (4.0, 24.6),
+    (2.4, 25.0),
+    (0.0, 25.0),
+]
+STYLES = {"dome": HANDLE_PROFILE, "straight": HANDLE_STRAIGHT}
 
 
 def revolve(profile, segments=96):
@@ -86,6 +107,23 @@ def make_handle(segments=96):
     return revolve(HANDLE_PROFILE, segments=segments)
 
 
+def make_handle_scad(profile, segments, tmpdir: Path):
+    """用 OpenSCAD 的 rotate_extrude 旋转剖面出件（改 profile 一行就换形状）。"""
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    job = scad_engine.write_job_scad({}, scad_engine.SCAD_DIR / "handle.scad",
+                                     tmpdir / "handle_job.scad")
+    stl = tmpdir / "handle_body.stl"
+    ok, secs, tail = scad_engine.render(
+        job, stl, defs=dict(profile=[[float(r), float(z)] for r, z in profile],
+                            seg=int(segments)))
+    if not ok:
+        raise RuntimeError(f"OpenSCAD 渲染失败：{tail}")
+    m = trimesh.load(str(stl))
+    m.merge_vertices()
+    m.fix_normals()
+    return m, secs
+
+
 def layout_batch(one, count, gap=8.0, cols=None):
     """按网格在打印床上摆 count 个，返回合并后的单一网格（可直接切片）。"""
     if count <= 1:
@@ -118,27 +156,46 @@ def main():
     ap.add_argument("--gap", type=float, default=8.0, help="件间距 mm")
     ap.add_argument("--cols", type=int, default=None, help="每行几个，默认按床宽自动")
     ap.add_argument("--segments", type=int, default=96)
+    ap.add_argument("--style", choices=["dome", "straight"], default="dome",
+                    help="dome=现在的圆顶款（默认）；straight=直筒+顶 R3，表面更光")
+    ap.add_argument("--engine", choices=["scad", "mesh"], default="scad",
+                    help="scad=OpenSCAD rotate_extrude（改剖面只动一个数组）；mesh=旧 revolve()")
     ap.add_argument("--json", default=None, help="体检报告输出路径；默认 out/handles/")
     args = ap.parse_args()
 
     root = Path(__file__).resolve().parent.parent
+    profile = STYLES[args.style]
     # 标准件统一进 print/standard/（定稿可复用）；体检 json 进 out/handles/（给人看的）
-    out = Path(args.out) if args.out else (
-        root / "print" / "standard" / ("handle_slim.stl" if args.count <= 1
-                                       else f"handle_x{args.count}.stl"))
+    default_name = ("handle_slim.stl" if args.style == "dome" else "handle_straight.stl") \
+        if args.count <= 1 else (
+            f"handle_x{args.count}.stl" if args.style == "dome"
+            else f"handle_straight_x{args.count}.stl")
+    out = Path(args.out) if args.out else (root / "print" / "standard" / default_name)
     out.parent.mkdir(parents=True, exist_ok=True)
     rep_dir = root / "out" / "handles"
     rep_dir.mkdir(parents=True, exist_ok=True)
 
-    one = make_handle(segments=args.segments)
+    secs = None
+    if args.engine == "scad":
+        try:
+            one, secs = make_handle_scad(profile, args.segments, rep_dir / "_scad")
+            print(f"  [i] 引擎：OpenSCAD（渲染 {secs:.1f}s）")
+        except Exception as exc:            # noqa: BLE001
+            print(f"  [!] OpenSCAD 失败，回退 revolve：{exc}")
+            one = revolve(profile, segments=args.segments)
+    else:
+        one = revolve(profile, segments=args.segments)
     mesh, grid = layout_batch(one, args.count, gap=args.gap, cols=args.cols)
     mesh.export(str(out))
 
     b = mesh.bounds
     size = b[1] - b[0]
-    grip_d = 2.0 * max(r for r, z in HANDLE_PROFILE if 2.6 <= z <= 19.0)
+    grip_d = 2.0 * max(r for r, z in profile if 2.6 <= z <= 19.0)
     info = {
         "file": str(out.relative_to(root)) if out.is_relative_to(root) else str(out),
+        "engine": "scad" if secs else "mesh",
+        "scad_render_s": round(secs, 1) if secs else None,
+        "style": args.style,
         "count": args.count,
         "grid": list(grid),
         "gap_mm": args.gap,

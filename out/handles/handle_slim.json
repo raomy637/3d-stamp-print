@@ -1,5 +1,8 @@
 {
-  "file": "D:\\opencode\\3D-stamp-print\\handles\\handle_slim.stl",
+  "file": "print\\standard\\handle_slim.stl",
+  "engine": "scad",
+  "scad_render_s": 0.1,
+  "style": "dome",
   "count": 1,
   "grid": [
     1,

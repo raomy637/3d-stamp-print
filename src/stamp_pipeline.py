@@ -43,6 +43,11 @@ from shapely.ops import unary_union
 from shapely import affinity
 import trimesh
 
+try:                       # 同目录模块（脚本直接运行时可用）
+    import scad_engine
+except ImportError:        # 作为包导入时
+    from . import scad_engine
+
 # --------------------------------------------------------------------------- #
 # 1. 读图 -> 二值掩码
 # --------------------------------------------------------------------------- #
@@ -673,6 +678,12 @@ def main(argv=None):
     ap.add_argument("--relief-mode", choices=["raise", "sink"], default="raise",
                     help="raise=图案凸起成印章，压出来是凹线（默认）\n"
                          "sink=图案下沉成凹槽（凹模），压出来是凸线；凹槽自动带脱模锥度")
+    ap.add_argument("--engine", choices=["scad", "mesh"], default="scad",
+                    help="scad=2D 轮廓交给 OpenSCAD（CGAL）挤出+布尔，参数化、可预览（默认）\n"
+                         "mesh=旧的 shapely+trimesh/manifold 路径，作回退")
+    ap.add_argument("--cutter-engine", choices=["mesh", "scad"], default="mesh",
+                    help="边框用哪个引擎。默认 mesh：边框全是 offset，\n"
+                         "OpenSCAD 逐段 offset 实测 115s，trimesh 只要 0.5s")
     ap.add_argument("--cavity-draft", type=float, default=5.0,
                     help="凹模槽壁外张锥度 °（仅 --relief-mode sink；默认 5，0=垂直墙）")
     ap.add_argument("--cavity-segments", type=int, default=4,
@@ -869,55 +880,82 @@ def main(argv=None):
             + (f" + 边框 {rim_w}mm宽/{B + D + rim_h}mm高" if rim_w > 0 else ""))
 
     parts = []
-    if sink:
-        # 凹模：整块底板到 B，图案区域从顶面往下挖 D 深。
-        # 槽底窄、开口宽（外张锥度），粘土才拔得出来；锥面按 cavity_segments 段阶梯近似。
-        # 坑：图案把顶面切碎成多个互不相连的小岛，union 前的 volume 预检会直接报错，
-        #     所以这里走 check_volume=False，交给 manifold 自己合并多体。
-        body = inner if rim_w > 0 else base_mm
-        slab = extrude(body, 0, B, "base")
-        n = max(1, int(args.cavity_segments))
-        tan_a = math.tan(math.radians(draft))
-        cav_parts = []
-        pieces = pat_mm.geoms if hasattr(pat_mm, "geoms") else [pat_mm]
-        for k in range(n):
-            z0 = (B - D) + D * k / n
-            z1 = (B - D) + D * (k + 1) / n
-            off = D * tan_a * (k + 0.5) / n
-            for piece in pieces:
-                p = piece.buffer(off, join_style="mitre") if off > 1e-9 else piece
-                if p.is_empty:
-                    continue
-                c = extrude(p, z0, z1, f"cavity{k}")
-                if c is not None:
-                    cav_parts.append(c)
-        cav = (cav_parts[0] if len(cav_parts) == 1
-               else trimesh.boolean.union(cav_parts, engine="manifold", check_volume=False))
-        mesh = None
-        if slab is not None and cav is not None:
-            try:
-                mesh = trimesh.boolean.difference([slab, cav], engine="manifold",
-                                                  check_volume=False)
-            except Exception as e:  # noqa: BLE001
-                log(f"  [!] 差集失败：{e}")
-        if rim_w > 0 and mesh is not None:
+    scad_seconds = None
+    use_scad = (args.engine == "scad" and rim_w == 0)
+    if args.engine == "scad" and rim_w > 0:
+        log("  [!] 一体式 --rim-w 目前只在 mesh 引擎里实现，本次改用 mesh")
+    if use_scad:
+        mods = {
+            "outline_2d": scad_engine.geom_to_scad_module(base_mm, "outline_2d"),
+            "pattern_2d": scad_engine.geom_to_scad_module(pat_mm, "pattern_2d"),
+        }
+        scad_file = scad_engine.write_job_scad(
+            mods, scad_engine.SCAD_DIR / "base.scad",
+            job_dir / "scad" / "base_job.scad")
+        d_ratio = scad_engine.draft_ratio(D, draft, pat_mm) if sink else 1.0
+        ok, scad_seconds, tail = scad_engine.render(
+            scad_file, base_stl,
+            defs=dict(mode=("sink" if sink else "raise"), base_t=B, relief=D,
+                      draft_ratio=round(d_ratio, 6)))
+        if ok:
+            mesh = trimesh.load(str(base_stl))
+            total_h = B if sink else B + D
+            log(f"  [i] 建体引擎：OpenSCAD（polygon 内联，渲染 {scad_seconds:.1f}s）")
+        else:
+            log(f"  [!] OpenSCAD 渲染失败，回退 mesh 引擎：{tail}")
+            use_scad = False
+    if not use_scad:
+        parts = []
+        if sink:
+            # 凹模：整块底板到 B，图案区域从顶面往下挖 D 深。
+            # 槽底窄、开口宽（外张锥度），粘土才拔得出来；锥面按 cavity_segments 段阶梯近似。
+            # 坑：图案把顶面切碎成多个互不相连的小岛，union 前的 volume 预检会直接报错，
+            #     所以这里走 check_volume=False，交给 manifold 自己合并多体。
+            body = inner if rim_w > 0 else base_mm
+            slab = extrude(body, 0, B, "base")
+            n = max(1, int(args.cavity_segments))
+            tan_a = math.tan(math.radians(draft))
+            cav_parts = []
+            pieces = pat_mm.geoms if hasattr(pat_mm, "geoms") else [pat_mm]
+            for k in range(n):
+                z0 = (B - D) + D * k / n
+                z1 = (B - D) + D * (k + 1) / n
+                off = D * tan_a * (k + 0.5) / n
+                for piece in pieces:
+                    p = piece.buffer(off, join_style="mitre") if off > 1e-9 else piece
+                    if p.is_empty:
+                        continue
+                    c = extrude(p, z0, z1, f"cavity{k}")
+                    if c is not None:
+                        cav_parts.append(c)
+            cav = (cav_parts[0] if len(cav_parts) == 1
+                   else trimesh.boolean.union(cav_parts, engine="manifold", check_volume=False))
+            mesh = None
+            if slab is not None and cav is not None:
+                try:
+                    mesh = trimesh.boolean.difference([slab, cav], engine="manifold",
+                                                      check_volume=False)
+                except Exception as e:  # noqa: BLE001
+                    log(f"  [!] 差集失败：{e}")
+            if rim_w > 0 and mesh is not None:
+                ring = base_mm.difference(inner)
+                rim_m = extrude(ring, 0, B + rim_h, "rim")
+                mesh = (rim_m if mesh is None else
+                        trimesh.boolean.union([mesh, rim_m], engine="manifold", check_volume=False))
+            total_h = B + (rim_h if rim_w > 0 else 0.0)
+        elif rim_w > 0:
             ring = base_mm.difference(inner)
-            rim_m = extrude(ring, 0, B + rim_h, "rim")
-            mesh = (rim_m if mesh is None else
-                    trimesh.boolean.union([mesh, rim_m], engine="manifold", check_volume=False))
-        total_h = B + (rim_h if rim_w > 0 else 0.0)
-    elif rim_w > 0:
-        ring = base_mm.difference(inner)
-        parts.append(extrude(inner.difference(pat_mm), 0, B, "base"))
-        parts.append(extrude(pat_mm, 0, B + D, "relief"))
-        parts.append(extrude(ring, 0, B + D + rim_h, "rim"))
-        total_h = B + D + rim_h
-        mesh = safe_union(parts)
-    else:
-        parts.append(extrude(base_mm.difference(pat_mm), 0, B, "base"))
-        parts.append(extrude(pat_mm, 0, B + D, "relief"))
-        total_h = B + D
-        mesh = safe_union(parts)
+            parts.append(extrude(inner.difference(pat_mm), 0, B, "base"))
+            parts.append(extrude(pat_mm, 0, B + D, "relief"))
+            parts.append(extrude(ring, 0, B + D + rim_h, "rim"))
+            total_h = B + D + rim_h
+            mesh = safe_union(parts)
+        else:
+            parts.append(extrude(base_mm.difference(pat_mm), 0, B, "base"))
+            parts.append(extrude(pat_mm, 0, B + D, "relief"))
+            total_h = B + D
+            mesh = safe_union(parts)
+
 
     if mesh is None:
         log("[x] 网格生成失败")
@@ -944,10 +982,27 @@ def main(argv=None):
         log("  [!] 已启用一体式 --rim-w，跳过独立边框（两者只能选一个）")
     else:
         inner_geom = base_mm.buffer(clr, join_style="round")
-        cm = build_cutter(inner_geom,
-                          wall=args.cutter_wall, height=args.cutter_height,
+        cm = None
+        if args.cutter_engine == "scad":
+            mods = {"inner_2d": scad_engine.geom_to_scad_module(inner_geom, "inner_2d")}
+            scad_file = scad_engine.write_job_scad(
+                mods, scad_engine.SCAD_DIR / "cutter.scad",
+                job_dir / "scad" / "cutter_job.scad")
+            ok, cut_secs, tail = scad_engine.render(
+                scad_file, cutter_stl_path,
+                defs=dict(wall=args.cutter_wall, height=args.cutter_height,
                           edge=args.cutter_edge, edge_h=args.cutter_edge_h,
-                          flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t)
+                          flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t))
+            if ok:
+                cm = trimesh.load(str(cutter_stl_path))
+                log(f"  [i] 边框引擎：OpenSCAD（渲染 {cut_secs:.1f}s）")
+            else:
+                log(f"  [!] 边框 OpenSCAD 渲染失败，回退 mesh：{tail}")
+        if cm is None:
+            cm = build_cutter(inner_geom,
+                              wall=args.cutter_wall, height=args.cutter_height,
+                              edge=args.cutter_edge, edge_h=args.cutter_edge_h,
+                              flange_w=args.cutter_flange_w, flange_t=args.cutter_flange_t)
         if cm is not None and len(cm.faces) > 0:
             cutter_stl = cutter_stl_path
             cm.export(str(cutter_stl))
@@ -977,6 +1032,10 @@ def main(argv=None):
 
     report = {
         "input": str(src),
+        "engine": args.engine,
+        "engine_note": ("2D 轮廓交给 OpenSCAD/CGAL 挤出与布尔" if args.engine == "scad"
+                        else "旧路径：shapely 2D 布尔 + trimesh/manifold 3D"),
+        "scad_render_s": round(scad_seconds, 1) if scad_seconds else None,
         "size_mm": args.size,
         "size_semantics": "成品尺寸（分体模式下 = 边框内腔；底模再内缩 cutter_clearance）",
         "stamp_size_mm": [round(float(bb[1][i] - bb[0][i]), 2) for i in range(2)],

@@ -2,6 +2,15 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11 · 2026-11-24 · 建体迁到 OpenSCAD（借 PJ1 的参数化建模）
+
+- 参照 3D 打印电脑 `D:\HA1\PJ1`（名字印章生成器 stampgen v2.2.8）的做法：Python 只把位图变成 2D 多边形，挤出与 3D 布尔交给 OpenSCAD/CGAL。新增 `src/scad_engine.py` 与 `scad/{base,cutter,handle}.scad`，`--engine {scad,mesh}` 默认 scad，找不到 openscad 自动回退 mesh。
+- 实测收益：凹模从 144.6k 面降到 48.0k 面（切片更快），凸模体积与旧件完全一致（18.56cm³），面数从 56.2k 降到 37.9k。
+- 实测代价：底模 19.3s（凸）/ 25.6s（凹），旧 mesh 路径全流程 5.7s。因此 **边框固定走 mesh**（`--cutter-engine` 默认 mesh）：边框全靠 `offset()`，OpenSCAD 8 段阶梯实测 114.7s，trimesh 0.50s，差 229 倍。
+- 三个坑写进 `guides/openscad.md`：① 不要用 SVG import——OpenSCAD 2021.01 对多个 SVG 的 y 映射不一致，outline 落 0..84.2、pattern 落 72.37..168.4，union 出 10 个壳；改 `polygon()` 内联。② 参数必须 `-D`，job.scad 里赋值会让 `is_undef(x) ? 默认 : x` 在同作用域自我覆盖（raise/sink 出同一件）。③ 凹模拔模别用多层 offset（59 路径×8 段 >10 分钟），改 `linear_extrude(scale=)` 一次成型，23 秒。
+- 手柄新增 `--style straight`（直筒 φ11.8 + 顶 R3）：斜面面积占比从 61.6% 降到 18.6%，垂直面 23.1%→66.6%。呼应 v9.1 的结论——横纹主要来自斜面，改形状比降层高更有效。dome 款出件与旧 revolve 完全一致（1,728 面、2.03cm³）。
+- `scad/` 模板参数用 `is_undef` 声明，可直接在 OpenSCAD GUI 里 F5 预览；`report.json` 新增 `engine` 与 `scad_render_s`。
+
 ## v10 · 2026-11-24 · 目录重构（src/ + print 三档 + 层高对比件）
 
 - 之前所有脚本平铺在根目录，产出和代码混在一起。现在代码全进 `src/`：`stamp_pipeline.py`、`make_handle.py`、`make_print_index.py`、`src/viewer/`、`src/tools/`。根目录只剩 `README.md`、`CHANGELOG.md`、`PRINT.md`、`.gitignore` 与四个目录。
