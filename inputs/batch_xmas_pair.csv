@@ -1,0 +1,3 @@
+item,input,size,relief,mode
+A_xmas,inputs/bakers_framed.png,85,1.8,raise
+B_xmas_cav,inputs/bakers_framed.png,85,1.8,sink

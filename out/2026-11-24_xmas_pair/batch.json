@@ -1,0 +1,70 @@
+{
+  "batch": "2026-11-24_xmas_pair",
+  "items": [
+    {
+      "item": "B_xmas_cav",
+      "input": "inputs/bakers_framed.png",
+      "size": 85.0,
+      "relief": 1.8,
+      "mode": "sink",
+      "job": "2026-11-24_xmas_pair/B_xmas_cav",
+      "rc": 0,
+      "render_s": 11.8,
+      "files": {
+        "base": "D:\\opencode\\3D-stamp-print\\print\\jobs\\2026-11-24_xmas_pair\\B_xmas_cav\\base.stl",
+        "cutter": "D:\\opencode\\3D-stamp-print\\print\\jobs\\2026-11-24_xmas_pair\\B_xmas_cav\\cutter.stl"
+      },
+      "html": "D:\\opencode\\3D-stamp-print\\out\\2026-11-24_xmas_pair\\B_xmas_cav\\model.html",
+      "err": null,
+      "report": {
+        "relief_mode": "sink",
+        "size_mm": 85.0,
+        "stamp_size_mm": [
+          84.2,
+          84.2
+        ],
+        "relief": 1.8,
+        "base_thickness": 3.0,
+        "cavity_draft_deg": 5.0,
+        "engine": "scad",
+        "scad_render_s": 1.0,
+        "watertight": true,
+        "triangles": 37890
+      },
+      "cutter_same_as": "A_xmas"
+    },
+    {
+      "item": "A_xmas",
+      "input": "inputs/bakers_framed.png",
+      "size": 85.0,
+      "relief": 1.8,
+      "mode": "raise",
+      "job": "2026-11-24_xmas_pair/A_xmas",
+      "rc": 0,
+      "render_s": 11.9,
+      "files": {
+        "base": "D:\\opencode\\3D-stamp-print\\print\\jobs\\2026-11-24_xmas_pair\\A_xmas\\base.stl",
+        "cutter": "D:\\opencode\\3D-stamp-print\\print\\jobs\\2026-11-24_xmas_pair\\A_xmas\\cutter.stl"
+      },
+      "html": "D:\\opencode\\3D-stamp-print\\out\\2026-11-24_xmas_pair\\A_xmas\\model.html",
+      "err": null,
+      "report": {
+        "relief_mode": "raise",
+        "size_mm": 85.0,
+        "stamp_size_mm": [
+          84.2,
+          84.2
+        ],
+        "relief": 1.8,
+        "base_thickness": 3.0,
+        "cavity_draft_deg": 0.0,
+        "engine": "scad",
+        "scad_render_s": 1.0,
+        "watertight": true,
+        "triangles": 37890
+      }
+    }
+  ],
+  "wall_s": 16.4,
+  "workers": 2
+}

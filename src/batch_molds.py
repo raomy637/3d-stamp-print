@@ -102,6 +102,24 @@ def run_one(spec: dict, batch: str, html: bool, preview: bool) -> dict:
     return rec
 
 
+def mark_same_cutters(recs: list[dict]) -> None:
+    """同形边框只提示、不删文件：同 size 同外框的两套，边框 STL 字节完全一致。"""
+    import hashlib
+    seen: dict[str, str] = {}
+    for r in sorted(recs, key=lambda x: x["item"]):
+        c = r["files"].get("cutter")
+        if not c or not Path(c).exists():
+            continue
+        try:
+            h = hashlib.sha256(Path(c).read_bytes()).hexdigest()
+        except Exception:                  # noqa: BLE001
+            continue
+        if h in seen:
+            r["cutter_same_as"] = seen[h]
+        else:
+            seen[h] = r["item"]
+
+
 def write_index(batch: str, recs: list[dict], wall: float, workers: int) -> None:
     batch_dir = ROOT / "out" / batch
     (batch_dir / "batch.json").write_text(
@@ -124,9 +142,12 @@ def write_index(batch: str, recs: list[dict], wall: float, workers: int) -> None
         rep = r.get("report", {})
         base = r["files"].get("base", "")
         cut = r["files"].get("cutter", "")
+        cut_txt = Path(cut).name if cut else "缺"
+        if r.get("cutter_same_as"):
+            cut_txt = f"{Path(cut).name}（同 `{r['cutter_same_as']}`，不必重复打）"
         L.append(f"| `{r['item']}` | {Path(r['input']).name} | {rep.get('size_mm', r['size']):g} | "
                  f"{'凹模' if r['mode']=='sink' else '凸模'} | "
-                 f"`{Path(base).name if base else '缺'}` | `{Path(cut).name if cut else '缺'}` | "
+                 f"`{Path(base).name if base else '缺'}` | {cut_txt} | "
                  f"{rep.get('triangles', '?')} | {'✓' if rep.get('watertight') else '×'} | {r['render_s']} |")
     L += ["", f"成功 {ok} / {len(recs)} 套。", "",
           "打印入口：`print/jobs/" + batch + "/<单号>/`，底模 + 边框成对；"
@@ -168,6 +189,7 @@ def main(argv=None):
                   + ("" if rec.get("rc") == 0 else f"  {rec['err'][-200:] if rec['err'] else ''}"))
     wall = time.perf_counter() - t0
 
+    mark_same_cutters(recs)
     write_index(args.batch, recs, wall, args.jobs)
     ok = sum(1 for r in recs if r.get("rc") == 0)
     print(f"\n完成 {ok}/{len(specs)} · 总墙钟 {wall:.1f}s（平均 {wall/len(recs):.1f}s/套）")
