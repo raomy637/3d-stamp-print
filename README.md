@@ -10,22 +10,11 @@
 
 ## 版本与备份
 
-本地是 git 仓库，远端是私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)，走 SSH（本机 `~/.ssh/id_ed25519`）。
+本地 git 仓库，远端私有仓库 [raomy637/3d-stamp-print](https://github.com/raomy637/3d-stamp-print)（SSH，`origin/main` 已跟踪）。跑完一轮留档：`git add -A` → `git commit -m "改了什么"` → `git push`。
 
-每次跑完一轮、想留档时：
-
-```
-git add -A
-git commit -m "改了什么"
-git push
-```
-
-`.gitignore` 排除 `__pycache__`、`_p_*.html` 等探针副本、`*.gcode` / `*.3mf`（切片产物）。STL 与 `model.html` 都入库，所以克隆下来就是完整的可打状态，不用重跑。
-
+`.gitignore` 只排除缓存与探针副本（`__pycache__`、`_p_*.html`）和切片产物（`*.gcode`、`*.3mf`）；STL 与 `model.html` 都入库，克隆即得完整可打状态。
 
 ## 文件
-
-
 
 | 路径                              | 作用                                                      |
 | ------------------------------- | ------------------------------------------------------- |
@@ -43,16 +32,12 @@ git push
 
 ## 它做的事
 
-
-
 ```
 线稿 PNG ─► 二值化/去噪 ─► 外框识别 ─► 线宽体检 ─► 矢量化(含孔洞) ─► 镜像 X ─► 缩放到 --size ─► 居中
               └─► 外框 → 底面轮廓（异形边自动继承）
                             ├─► 底面/图案 2D 布尔 ─► 拉伸 ─► 底模 STL（水密）
                             └─► 同轮廓 buffer(墙/翼缘) ─► 外表面收成刃口 ─► 边框 STL（水密）
 ```
-
-
 
 | 关键点    | 说明                                                |
 | ------ | ------------------------------------------------- |
@@ -64,15 +49,11 @@ git push
 
 ## 安装依赖
 
-
-
 ```
 python -m pip install numpy pillow scipy scikit-image shapely trimesh mapbox-earcut manifold3d
 ```
 
 ## 用法
-
-
 
 ```
 # 1) 底模 + 边框：成品 85mm，浮雕 1.8mm，附带分层 SVG 和预览图
@@ -101,8 +82,6 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 产出分两处。`print/` 只放可打印 `.stl`（`<图案>_base` / `<图案>_cutter` / `handle_*`）；`out/<图案>/` 放给人看的东西（MANIFEST.md 清单、report.json 体检、preview.png 三栏预览、lines.svg、model.html）。布局细节见 [guides/output-layout.md](guides/output-layout.md)。
 
 ## 参数
-
-
 
 | 参数                     | 默认         | 说明                                                    |
 | ---------------------- | ---------- | ----------------------------------------------------- |
@@ -136,8 +115,6 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 
 手柄不跟底模一起出。底模是每张图都要重做的，手柄是一套配所有的零件，所以由 `make_handle.py` 单独出、尺寸定死、批量打印：
 
-
-
 | 项  | 值                                 |
 | -- | --------------------------------- |
 | 底盘 | φ14 × 1.4mm（粘接面 154mm²，502 一薄圈就够） |
@@ -155,8 +132,6 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 
 边框不跟底模连在一起。它只有一圈 1.2mm 的墙 + 0.4mm 刃口，负责切出粘土外形；底模负责压图案。两件靠 0.4mm 环隙对位。
 
-
-
 | 项       | 值                                     |
 | ------- | ------------------------------------- |
 | 内腔      | `--size`（= 切出来的粘土尺寸）                  |
@@ -168,8 +143,6 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
 
 ## 打印朝向：三件各不相同
-
-
 
 |      | 底模                                | 边框                        | 手柄        |
 | ---- | --------------------------------- | ------------------------- | --------- |
@@ -188,8 +161,6 @@ python make_print_index.py --check         # 只查不改，退出码 0 = 全部
 
 `viewer/make_viewer.py` 把 STL 打包成一个单文件 HTML：three.js 与轨道控制器全部内联，网格量化成 uint16 内嵌，双击即开、不联网、不装查看器。
 
-
-
 ```
 python viewer\make_viewer.py --stl print\bakers_v3_base.stl --cutter print\bakers_v3_cutter.stl `
     --handle print\handle_slim.stl --report out\bakers_v3\report.json `
@@ -201,8 +172,6 @@ python viewer\make_viewer.py --stl print\bakers_v3_base.stl --cutter print\baker
 界面：左上角参数面板（从 json 读尺寸 / 线宽 / 是否镜像），底部一排按钮 —— 分离视图 / 装配视图 / 自动旋转 / 俯视 / 侧视 / 背面（俯视验镜像、侧视看厚度、背面看粘接面）。鼠标左键转、右键平移、滚轮缩放。
 
 ## 已知限制
-
-
 
 | 限制         | 现状                                                          |
 | ---------- | ----------------------------------------------------------- |
