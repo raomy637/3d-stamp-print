@@ -16,23 +16,23 @@
 
 ```
 --size 85          = 边框内腔（= 切出来的粘土外形）
-底模外形 84.2      = size - 2 * cutter_clearance(0.4)   ← 单边 0.4 环隙
+底模外形 83.4      = size - 2 * cutter_clearance(0.8)   ← 单边 0.8 环隙
 边框外形 95.4      = size + 2 * (wall 1.2 + flange 4.0)
-边框高   12        = wall 主体 1.6→9.0 + 刃口锥段 9.0→12.0
+边框高   15        = wall 主体 1.6→12.0 + 垂直薄刃 12.0→15.0
 ```
 
-环隙的作用：底模要能顺畅滑进边框内腔、又不晃。MakerWorld 的 Cookie Ejector 生成器把 **0.4mm 定为标准值**（"the standard for the stamp to slide smoothly without being loose"）[MakerWorld: Parametric Cookie Ejector Generator](https://makerworld.com/en/models/2678733-parametric-cookie-ejector-generator)，这里直接沿用。
+环隙的作用：底模要能顺畅滑进边框内腔、又不晃。MakerWorld 的 Cookie Ejector 生成器把 0.4mm 当标准值[MakerWorld: Parametric Cookie Ejector Generator](https://makerworld.com/en/models/2678733-parametric-cookie-ejector-generator)，但那是光固化/机加工语境。FDM 实测（0.2 喷嘴、4 墙）0.4mm 设计值打完只剩 **0.28mm 净间隙**，直接卡死；**定稿 0.8mm**，实测净间隙 0.72–0.90mm，能松配。
 
 ## 边框的四个参数与出处
 
 | 参数 | 取的值 | 依据 |
 |---|---|---|
-| `--cutter-height` | 12 | 主流 12–15mm；粘土比饼干面团薄，12 够用又不至于翘。[MakerWorld: Cookie Cutter and Stamp Generator 2.0.1](https://makerworld.com/en/models/2466419-cookie-cutter-and-stamp-generator-2-0-1) |
+| `--cutter-height` | 15 | 定稿切割高度 1.5cm（用户口径）；主流区间 12–15mm。[MakerWorld: Cookie Cutter and Stamp Generator 2.0.1](https://makerworld.com/en/models/2466419-cookie-cutter-and-stamp-generator-2-0-1) |
 | `--cutter-wall` | 1.2 | 0.8–1.2 是干净切口的区间；0.4 喷嘴下 1.2 正好 3 圈实心墙，强度和切口兼得 |
 | `--cutter-edge` | 0.4 | 刃口厚 0.4–0.5mm 才有"刀"的感；再厚就是挤压不是切割 |
 | `--cutter-flange-w/t` | 4.0 / 1.6 | 底部翼缘（brim）：扩大贴床面积防翘边，翻过来还是手掌的按压台面。[MakerWorld: Ultimate Cookie Cutter](https://makerworld.com/en/models/2249022-ultimate-cookie-cutter-over-35-shapes-any-size) |
 
-刃口锥段 3mm：外表面向上收窄，粘土被切开后不会夹住墙。**内腔全程不缩**，所以切出来的尺寸恒等于 `--size`。
+刃口段 3mm：外表面一次性收薄到 0.4 后垂直到底（`vertical`），粘土被切开后不会夹住墙。**内腔全程不缩**，所以切出来的尺寸恒等于 `--size`。
 
 ## 打印朝向（三件各不相同）
 
@@ -47,7 +47,7 @@
 ## 装配流程
 
 1. 边框扣在粘土上压到底 → 得到一块外形精确的粘土；
-2. 底模图案朝下，滑进边框内腔（0.4mm 环隙），手掌压手柄，图案压入粘土 1.8mm（边框高 12 托住底模，不会压穿）；
+2. 底模图案朝下，滑进边框内腔（0.8mm 环隙），手掌压手柄，图案压入粘土 1.8mm（边框高 15 托住底模，不会压穿）；
 3. 一起拿起边框+底模，粘土留在桌上，脱模。
 
 手柄粘在底模背面中心：酒精擦净 → 502 涂一圈 → 压 30 秒。做批量时可先把手柄粘好，模具就成了"一把握"。

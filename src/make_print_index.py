@@ -202,7 +202,7 @@ def render(data) -> str:
                          f"{d['size'][0]} × {d['size'][1]} × {d['size'][2]} | "
                          f"{d['faces']:,} | {'✓' if d['watertight'] else '×'} | {d['volume_cm3']} |")
             L.append("")
-        L.append("打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / 4 墙 / 顶面熨烫 / 无支撑；"
+        L.append("打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / 4 墙 / **顶面不熨烫** / 无支撑；"
                  "边框翼缘贴床、刃口朝上，4 墙 + 4mm brim，打完翻过来用。详见 `guides/printing.md`。")
     else:
         L.append("_还没有出过模具。跑 `python src/stamp_pipeline.py --input 图 --out out/<job>`。_")

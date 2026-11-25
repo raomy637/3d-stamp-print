@@ -111,12 +111,12 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 | `--cavity-draft`       | 5.0        | 凹模槽壁外张锥度 °；0 = 垂直墙（会拽断细线）；阶梯段数由 `--cavity-segments` 控制 |
 | `--margin`             | 1.2        | 底面轮廓相对图案外扩的边距 mm                                          |
 | `--cutter-wall`        | 1.2        | 主体墙厚 mm，参考区间 0.8–1.2；≥1.5 会挤压面团                              |
-| `--cutter-height`      | 12         | 边框总高 mm（行业 12–15，粘土取 12）                                  |
+| `--cutter-height`      | 15         | 边框总高 mm = 切割高度，定稿 15（1.5cm）；旧默认 12 已废                |
 | `--cutter-edge`        | 0.4        | 刃口薄壁厚度 mm = 1 条 0.4 线宽                                     |
 | `--cutter-edge-mode`   | vertical   | 刃口形态：`vertical` 外壁一次收薄后垂直到底（零斜面）；`taper` 旧 8 段阶梯（已弃）  |
 | `--cutter-edge-h`      | 3.0        | 薄刃段高度 mm（翻转后就是切进粘土的深度）                                    |
 | `--cutter-flange-w/-t` | 4.0 / 1.6  | 底部翼缘宽 / 厚 mm（贴床防翘 + 翻过来当握边）                               |
-| `--cutter-clearance`   | 0.4        | 底模与边框内腔的单边间隙 mm（行业标准值）                                    |
+| `--cutter-clearance`   | 0.8        | 底模与边框内腔的单边间隙 mm（0.4 打完实测卡死，0.8 才有净间隙）                 |
 | `--no-cutter`          | 关          | 不出边框 STL                                                  |
 | `--print-dir`          | print      | 可打印 STL 落到哪个目录                                            |
 | `--job`                | `--out` 末段 | 打印目录里的单号；批量时写 `批次/单号`（落两级目录）                          |
@@ -151,21 +151,21 @@ python src\batch_molds.py --batch xmas40 --list inputs\batch_xmas40.csv --limit 
 | 项       | 值                                     |
 | ------- | ------------------------------------- |
 | 内腔      | `--size`（= 切出来的粘土尺寸）                  |
-| 墙厚 / 总高 | 1.2 / 12mm（翼缘 1.6 → 主体到 9 → 垂直薄刃到 12） |
+| 墙厚 / 总高 | 1.2 / 15mm（翼缘 1.6 → 主体到 12 → 垂直薄刃到 15） |
 | 刃口      | 0.4mm 垂直薄壁，内壁和外壁都不收，零斜面（`--cutter-edge-mode vertical`） |
 | 翼缘      | 4.0 × 1.6mm，贴床防翘 + 翻过来当握边             |
 | 网格      | 95.4×95.4×12mm、17.7k 面、水密、5.32 cm³     |
 
-边框与底模不连在一起：边框只有一圈 1.2mm 墙 + 0.4mm 垂直薄刃，负责切出粘土外形；底模负责压图案，两件靠 0.4mm 环隙对位。使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
+边框与底模不连在一起：边框只有一圈 1.2mm 墙 + 0.4mm 垂直薄刃，负责切出粘土外形；底模负责压图案，两件靠 0.8mm 环隙对位。使用顺序：边框扣在粘土上压到底 → 底模图案朝下滑进内腔 → 手掌压手柄 → 连边框一起拿起，粘土留桌上。参数出处见 [guides/parts.md](guides/parts.md)。
 
 ## 打印朝向与切片
 
-底模平板贴床、图案（或凹槽）朝上、追求平整印面用光面 / 玻璃板（纹理 PEI 会把纹路翻印到印面）；边框翼缘贴床、刃口朝上，打完翻过来用；手柄底盘贴床直立。三件都免支撑。切片：底模 0.2 喷嘴 / 0.10 层高 / 4 墙 / 顶面熨烫，只有 0.4 喷嘴时先加 `--min-stroke 0.9`；边框与手柄的层高、brim、后处理见 [guides/printing.md](guides/printing.md)。
+底模平板贴床、图案（或凹槽）朝上、追求平整印面用光面 / 玻璃板（纹理 PEI 会把纹路翻印到印面）；边框翼缘贴床、刃口朝上，打完翻过来用；手柄底盘贴床直立。三件都免支撑。切片：底模 0.2 喷嘴 / 0.10 层高 / 4 墙 / **顶面不熨烫**（熨烫会把 0.6–0.9mm 窄浮雕熨塌，实物上看着像线条断开），只有 0.4 喷嘴时先加 `--min-stroke 0.9`；边框与手柄的层高、brim、后处理见 [guides/printing.md](guides/printing.md)。
 
 
 ## 3D 预览（HTML，离线可转）
 
-`src/viewer/make_viewer.py` 把 STL 打包成单文件 HTML：three.js 全部内联、网格量化成 uint16，双击即开不联网；默认就是**叠放装配视图**（边框套过底模、四周 0.4mm 缝可见），按钮可切装配 / 分离 / 自动旋转 / 俯视 / 侧视 / 背面。当前：`out\bakers_v5\model.html`（凸模）、`out\bakers_cav\model.html`、`out\2026-11-24_xmas_pair\<单号>\model.html`（批量两套）。
+`src/viewer/make_viewer.py` 把 STL 打包成单文件 HTML：three.js 全部内联、网格量化成 uint16，双击即开不联网；默认就是**叠放装配视图**（边框套过底模、四周 0.8mm 缝可见），按钮可切装配 / 分离 / 自动旋转 / 俯视 / 侧视 / 背面。当前：`out\bakers_v6\model.html`（凸模）、`out\bakers_cav_v6\model.html`（凹模）、`out\2026-11-24_xmas_pair\<单号>\model.html`（批量两套）。
 
 ```
 python src\viewer\make_viewer.py --stl print\jobs\bakers_v5\base.stl --cutter print\jobs\bakers_v5\cutter.stl --handle print\standard\handle_straight.stl --report out\bakers_v5\report.json --out out\bakers_v5\model.html
@@ -175,6 +175,6 @@ python src\viewer\make_viewer.py --stl print\jobs\bakers_v5\base.stl --cutter pr
 
 | 限制          | 现状                                                                                       |
 | ----------- | ---------------------------------------------------------------------------------------- |
-| 边框与底模无机械限位  | 靠人手对位 + 0.4mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                                                  |
+| 边框与底模无机械限位  | 靠人手对位 + 0.8mm 环隙；要 "扣上就对齐" 得加定位环或卡爪，尚未做                                                  |
 | 手柄无定位销      | φ15 平面粘接，手涂 502 容易粘偏（粘接面 176.7mm²，别把胶涂到边缘外）                                              |
 | 外框识别 / 重叠部件 | 外框靠 "铺满整图 + 闭合环" 判，四边装饰不闭合时用 `--frame-mode ignore` 兜底；`unary_union` 会合并重叠图案，近而不接的保留为独立浮雕 |

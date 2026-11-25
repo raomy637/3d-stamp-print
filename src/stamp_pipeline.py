@@ -652,8 +652,9 @@ def write_manifest(job_dir: Path, job: str, report: dict, args,
     if (job_dir / "model.html").exists():
         L.append("| `model.html` | 单文件 3D 预览，双击即开 |")
     L += ["", "## 打印设置", "",
-          "- 底模：平板贴床、**图案朝上**，0.2 喷嘴 0.10 层高 / 4 墙 / 25% 填充 / 顶面熨烫 / 无支撑；"
+          "- 底模：平板贴床、**图案朝上**，0.2 喷嘴 0.10 层高 / 4 墙 / 25% 填充 / **顶面不熨烫** / 无支撑；"
           "只有 0.4 喷嘴时先加 `--min-stroke 0.9`。",
+          "  熨烫会把 0.6–0.9mm 的窄浮雕顶端熨平，实物上表现为「线条断开」，务必关掉。",
           "- 边框：**翼缘贴床、刃口朝上**，4 墙 + 4mm brim，打完翻过来用。",
           "- 手柄：`print/standard/handle_x12.stl`（标准件，粘在底模背面中心）。", "",
           "> 总表（跨所有图案）看根目录 `PRINT.md`；切片细节看 `guides/printing.md`。"]
@@ -710,8 +711,8 @@ def main(argv=None):
                     help="不出边框 STL（默认出，随便框跟底模分离）")
     ap.add_argument("--cutter-wall", type=float, default=1.2,
                     help="边框壁厚 mm（刃口上方主体，0.4 喷嘴 1.2 刚好 3 圈实心）")
-    ap.add_argument("--cutter-height", type=float, default=12.0,
-                    help="边框总高 mm（含底部翼缘）")
+    ap.add_argument("--cutter-height", type=float, default=15.0,
+                    help="边框总高 mm（含底部翼缘，默认 15 = 切割高度 1.5cm）")
     ap.add_argument("--cutter-edge", type=float, default=0.4,
                     help="刃口厚度 mm（翻转后朝下切粘土那面）")
     ap.add_argument("--cutter-edge-h", type=float, default=3.0,
@@ -723,8 +724,8 @@ def main(argv=None):
                     help="底部翼缘外扩宽 mm（贴床防翘、翻过来当握边）")
     ap.add_argument("--cutter-flange-t", type=float, default=1.6,
                     help="翼缘厚度 mm")
-    ap.add_argument("--cutter-clearance", type=float, default=0.4,
-                    help="底模相对边框内腔的内缩 mm（防粘壁/防卡，单边）")
+    ap.add_argument("--cutter-clearance", type=float, default=0.8,
+                    help="底模相对边框内腔的内缩 mm（防粘壁/防卡，单边；FDM 实测 0.4 会卡，默认 0.8）")
     ap.add_argument("--scale", type=float, default=1.0, help="线稿放大倍数（补救低分辨率细线）")
     ap.add_argument("--frame-mode", choices=["silhouette", "keep", "ignore"], default="silhouette",
                     help="silhouette=外框转底面并丢弃框体(默认)\nkeep=框也当图案\nignore=丢框用圆底")
