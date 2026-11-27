@@ -19,6 +19,16 @@
   --size 101.6 --target-mm 0.6 --frame-mm 1.5 --px 3000
 ```
 
+**线宽范围压缩**（推荐，用于线宽本来不等、又不想压死细线的稿）：
+
+```text
+.venv\Scripts\python.exe src\tools\svg_shrink.py --input 设计.svg --out 细线.png ^
+  --size 101.6 --min-mm 1.0 --max-mm 1.4 --frame-mm 1.5 --px 3000
+```
+
+映射 `w' = min + (w - w_src_min) * (max - min)/(w_src_max - w_src_min)`：**最细那条 → min，其余按同一斜率收窄**，稿内粗细比例保留、整体变细；比 min 还细的走骨架加粗到 min。给了 `--min-mm` 就自动启用，`--max-mm` 缺省 = min×1.4；工具会打印连通块数量变化，`N → N-1` 说明有线条加粗后并块（需回退或拉大间距）。
+1mm ≈ 2.4 条挤出线（0.42），比 0.6mm 更抗压、脱模更稳，同样不会出现蜂窝。
+
 - 自动判别两种 SVG：**描边式**（fill 全为 none）直接改 `stroke-width`，精确等于目标线宽；**填充式**（有实体 fill）用「骨架中位半宽」量真实线宽后做**距离变换腐蚀**（`edt > (w-target)/2`），线宽减 2d、中心线严格不变。
   ⚠ 不能用 `2*面积/周长` 估宽度：短弧/字母笔画会低估一半（实测只收到 1.27mm 而非 0.6mm）。
 - 渲染通道本机 msedge/chrome headless 截图（无 cairo/cairosvg）；`--px 3000` 对 101.6mm 件约 0.033mm/px，够准。
@@ -62,6 +72,8 @@
 |---|---|---|---|
 | house 细线（生图重画，外框未加粗，反例） | 0.48 / 0.80 / 1.18 | `no_frame` → 圆底，**拒收** | 3 |
 | santa 位图代码归一 0.6mm | 0.58 / 0.71 / 1.02 | 18 瓣继承 | 3 |
-| christmas SVG 收缩 0.6mm（首选路线） | 0.61 / 0.64 / 1.49(外框) 实测 | 16.6x 填充比花瓣继承 | 6（含交叉鼓包） |
+| christmas SVG 收缩 0.6mm | 0.61 / 0.64 / 1.49(外框) 实测 | 16.6x 填充比花瓣继承 | 6（含交叉鼓包） |
+| christmas SVG 范围压缩 1.0–1.4mm | 源 1.41–1.79 → 目标 1.00–1.40 | 花瓣继承 | 7 |
+| angel_dog SVG 范围压缩（源全 0.24mm） | 全部 → 1.00mm 实测 1.00–1.48 | 无框（原稿即无花瓣环） | — |
 
 证据留档：`work/_实验/svg_shrink/`（SVG 路线：原稿渲染、收细稿、对比板、剖切、STL）、`work/_实验/monoline_code/`（位图路线）、`monoline_house/`、`monoline_santa/`（生图反例）；cap 收细反证见 `work/_实验/width_diag_demo.png`。

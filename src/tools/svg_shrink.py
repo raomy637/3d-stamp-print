@@ -86,23 +86,31 @@ def _is_frame(el):
     return any(h in tag for h in FRAME_HINTS)
 
 
-def shrink_strokes(root, target_units, frame_units=None):
-    """描边式：把 stroke-width 设为 target_units；外框组设为 frame_units（None=保持原样）。"""
+def shrink_strokes(root, mapper, units_per_mm, frame_mm=None):
+    """描边式：每个 stroke-width 按 mapper(旧mm)->新mm 换算（统一收细或范围压缩）；外框用 frame_mm。"""
     changed = 0
     for el in root.iter():
         is_frame = _is_frame(el)
+        new_units = None
+        if is_frame and frame_mm:
+            new_units = frame_mm * units_per_mm
         sw = el.get("stroke-width")
-        style = el.get("style") or ""
-        new = (frame_units if (is_frame and frame_units) else target_units)
         if sw is not None:
             old = _num(sw, 0.0)
-            if old > 0 and abs(new - old) > 1e-6:
-                el.set("stroke-width", str(round(new, 4)))
-                changed += 1
+            if old > 0:
+                if new_units is None:
+                    new_units = mapper(old / units_per_mm) * units_per_mm
+                if abs(new_units - old) > 1e-6:
+                    el.set("stroke-width", str(round(new_units, 4)))
+                    changed += 1
+        style = el.get("style") or ""
         if style and "stroke-width" in style:
-            def _rep(m):
+            def _rep(m, el=el, is_frame=is_frame, new_units=new_units):
                 old = float(m.group(1))
-                return f"stroke-width:{round(new, 4)}" if old > 0 else m.group(0)
+                if old <= 0:
+                    return m.group(0)
+                nu = new_units if (is_frame and frame_mm) else mapper(old / units_per_mm) * units_per_mm
+                return f"stroke-width:{round(nu, 4)}"
             new_style = re.sub(r"stroke-width\s*:\s*([-+]?\d*\.?\d+)", _rep, style)
             if new_style != style:
                 el.set("style", new_style)
@@ -168,6 +176,68 @@ def measure_halfwidth(reg, edt):
     return float(np.median(vals))
 
 
+def remap_fills(png_path, out_png, min_px, max_px, frame_px=None):
+    """范围压缩：最细的线 → min_px，其余按同一斜率收窄（w' = min + (w-wmin)*slope）。
+    粗的走腐蚀（中心线不变），比下限还细的走骨架加粗（只影响本来就细的笔画）。"""
+    g = np.asarray(Image.open(png_path).convert("L"))
+    mask = g < 128
+    lab, n = ndi.label(mask, structure=np.ones((3, 3)))
+    frame = find_frame_comp(mask)
+
+    widths, edts = {}, {}
+    for i in range(1, n + 1):
+        reg = lab == i
+        if reg.sum() < 12:
+            widths[i] = None
+            continue
+        edt = ndi.distance_transform_edt(reg)
+        edts[i] = edt
+        widths[i] = 2.0 * measure_halfwidth(reg, edt)
+
+    vals = [w for i, w in widths.items() if w and not (frame is not None and (lab == i)[frame].any())]
+    if not vals:
+        raise RuntimeError("没有可测量的线条")
+    wmin, wmax = min(vals), max(vals)
+    slope = (max_px - min_px) / (wmax - wmin) if wmax > wmin else 0.0
+
+    out = np.zeros_like(mask)
+    rows = []
+    for i in range(1, n + 1):
+        reg = lab == i
+        if widths[i] is None:
+            out |= reg
+            continue
+        if frame is not None and frame[reg].any():
+            w_now = widths[i]
+            reg2 = reg
+            if frame_px and w_now > 0:
+                d = (frame_px - w_now) / 2.0
+                if d > 0.5:
+                    reg2 = ndi.binary_dilation(reg, morphology.disk(int(round(d))))
+                elif d < -0.5:
+                    reg2 = edts[i] > (-d)
+            out |= reg2
+            rows.append((round(w_now, 2), round(frame_px or w_now, 2)))
+            continue
+        w = widths[i]
+        w_t = min(max(min_px + (w - wmin) * slope, min_px), max_px)
+        if w_t >= w - 0.5:  # 加粗：骨架重建到目标宽度
+            sk = morphology.skeletonize(reg)
+            r = max(1, int(round(w_t / 2.0)))
+            kept = morphology.binary_dilation(sk, morphology.disk(r))
+        else:  # 收窄：距离变换腐蚀，中心线严格不变
+            kept = edts[i] > ((w - w_t) / 2.0)
+        if not kept.any():
+            kept = morphology.binary_dilation(morphology.skeletonize(reg), morphology.disk(1))
+        out |= kept
+        rows.append((round(w, 2), round(w_t, 2)))
+
+    _, n_after = ndi.label(out, structure=np.ones((3, 3)))
+    img = ndi.gaussian_filter(out.astype(float) * 255.0, sigma=0.6)
+    Image.fromarray(np.clip(255 - img, 0, 255).astype(np.uint8)).save(out_png)
+    return rows, (n, n_after), (wmin, wmax)
+
+
 def erode_fills(png_path, out_png, target_px, frame_px=None):
     """填充式：按骨架中位半宽实测线宽，腐蚀到 target。
     外框环（若存在）不腐蚀；给了 frame_px 则按该宽度加粗（只取剪影，需 ≥2% 图幅才被 find_frame 认）。"""
@@ -207,9 +277,6 @@ def erode_fills(png_path, out_png, target_px, frame_px=None):
     img = ndi.gaussian_filter(out.astype(float) * 255.0, sigma=0.6)
     Image.fromarray(np.clip(255 - img, 0, 255).astype(np.uint8)).save(out_png)
     return rows
-    img = ndi.gaussian_filter(out.astype(float) * 255.0, sigma=0.6)
-    Image.fromarray(np.clip(255 - img, 0, 255).astype(np.uint8)).save(out_png)
-    return rows
 
 
 def main():
@@ -217,7 +284,10 @@ def main():
     ap.add_argument("--input", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--size", type=float, default=101.6, help="成品外接尺寸 mm（决定 mm↔unit 比）")
-    ap.add_argument("--target-mm", type=float, default=0.6, help="目标线宽（成品 mm）")
+    ap.add_argument("--target-mm", type=float, default=0.6, help="统一目标线宽（成品 mm）；给了 --min-mm 则改用范围压缩")
+    ap.add_argument("--min-mm", type=float, default=None,
+                    help="范围压缩：最细那条线设为此宽（如 1.0），其余按同一斜率收窄")
+    ap.add_argument("--max-mm", type=float, default=None, help="范围压缩：最粗那条线的目标宽度（默认 min-mm×1.4）")
     ap.add_argument("--frame-mm", type=float, default=1.5,
                     help="外框环线宽 mm（只取剪影、需 ≥2%% 图幅才能被 find_frame 认；0=保持原样）")
     ap.add_argument("--frame-ratio", type=float, default=1.0, help="（兼容旧参数，已不使用）")
@@ -238,16 +308,37 @@ def main():
     tmp = Path(tempfile.mkdtemp(prefix="svgshrink_"))
     work_svg = tmp / "work.svg"
     if mode == "stroke":
-        frame_units = (args.frame_mm * units_per_mm) if args.frame_mm else None
-        changed = shrink_strokes(root, target_units, frame_units)
+        if args.min_mm:
+            ws_mm = []
+            for el in root.iter():
+                if _is_frame(el):
+                    continue
+                sw = el.get("stroke-width")
+                if sw is not None and _num(sw, 0) > 0:
+                    ws_mm.append(_num(sw, 0) / units_per_mm)
+            wmin = min(ws_mm) if ws_mm else 0.0
+            wmax = max(ws_mm) if ws_mm else 0.0
+            mmax = args.max_mm or args.min_mm * 1.4
+            slope = (mmax - args.min_mm) / (wmax - wmin) if wmax > wmin else 0.0
+
+            def mapper(w, wmin=wmin, slope=slope, a=args.min_mm, b=mmax):
+                return min(max(a + (w - wmin) * slope, a), b)
+
+            changed = shrink_strokes(root, mapper, units_per_mm, args.frame_mm)
+            print(f"[stroke] 范围压缩：源 {wmin:.2f}–{wmax:.2f}mm → {args.min_mm:.2f}–{mmax:.2f}mm，改动 {changed} 处")
+        else:
+            changed = shrink_strokes(root, lambda w: args.target_mm, units_per_mm, args.frame_mm)
+            print(f"[stroke] stroke-width -> {args.target_mm:.2f}mm，改动 {changed} 处")
         root.set("width", f"{args.size}mm")
         root.set("height", f"{args.size * h_mm / w_mm:.3f}mm" if h_mm else f"{args.size}mm")
         root.set("viewBox", f"0 0 {vbw} {vbh}")
         ET.ElementTree(root).write(str(work_svg), encoding="utf-8", xml_declaration=True)
-        print(f"[stroke] stroke-width -> {target_units:.3f} unit = {args.target_mm:.2f}mm，改动 {changed} 处")
     else:
         shutil.copy(svg, work_svg)
-        print(f"[fill] 保留原 SVG，渲染后按线宽腐蚀到 {args.target_mm:.2f}mm")
+        if args.min_mm:
+            print(f"[fill] 保留原 SVG，渲染后按范围压缩（最细 {args.min_mm:.2f}mm）")
+        else:
+            print(f"[fill] 保留原 SVG，渲染后按线宽腐蚀到 {args.target_mm:.2f}mm")
 
     px = args.px
     print(f"几何：{w_mm:.2f}x{h_mm:.2f}mm, viewBox {vbw:g}x{vbh:g}, {units_per_mm:.3f} unit/mm")
@@ -256,7 +347,19 @@ def main():
 
     target_px = args.target_mm * (px / args.size)
     frame_px = (args.frame_mm * (px / args.size)) if args.frame_mm else None
-    if mode == "fill":
+    ppm = px / args.size
+    if mode == "fill" and args.min_mm:
+        min_px = args.min_mm * ppm
+        max_px = (args.max_mm or args.min_mm * 1.4) * ppm
+        rows, (n0, n1), (wmin, wmax) = remap_fills(tmp / "raw.png", args.out, min_px, max_px, frame_px)
+        print(f"范围压缩：源线宽 {wmin / ppm:.2f}–{wmax / ppm:.2f}mm → "
+              f"{args.min_mm:.2f}–{(args.max_mm or args.min_mm * 1.4):.2f}mm（同斜率）")
+        if n1 < n0:
+            print(f"  [!] 注意：连通块 {n0} → {n1}，有 {n0 - n1} 处线条因加粗并块")
+        uniq = sorted({(r[0], r[1]) for r in rows}, key=lambda r: -r[0])
+        for w_src, w_t in uniq[:6]:
+            print(f"   源 {w_src / ppm:5.2f}mm -> 目标 {w_t / ppm:5.2f}mm")
+    elif mode == "fill":
         rows = erode_fills(tmp / "raw.png", args.out, target_px, frame_px)
         rows.sort(key=lambda r: -r[0])
         print(f"腐蚀：{len(rows)} 个连通块，最大线宽 {rows[0][0]:.2f}px -> 目标 {target_px:.2f}px"
@@ -274,7 +377,8 @@ def main():
             reg = lab == i
             if reg.sum() < 12:
                 continue
-            ws.append(2.0 * reg.sum() / max(1.0, measure.perimeter(reg)))
+            edt = ndi.distance_transform_edt(reg)
+            ws.append(2.0 * measure_halfwidth(reg, edt))
         if ws:
             ws = np.array(ws) / (px / args.size)
             print(f"实测线宽 mm：min {ws.min():.2f} / 中位 {np.median(ws):.2f} / max {ws.max():.2f}")
