@@ -6,8 +6,31 @@
 
 | 路线 | 适用 | 源稿 | 切片 |
 |---|---|---|---|
+| SVG 矢量收缩（首选） | 客户/设计源是 SVG | `src/tools/svg_shrink.py` | 默认 2–3 墙 + Arachne |
+| 位图代码归一 | 只有 PNG/JPG | `src/tools/monoline_normalize.py` | 默认 2–3 墙 + Arachne |
 | 粗线存量 | 已有订单、粗字重源稿 | 不动 | 100% 填充 + 8 墙（0.4 喷嘴）+ Arachne + 顶壳 6，熨烫关 |
-| monoline 细线 | 新开发款、客户确认改细线风格 | 按目标线宽**重画** | 默认 2–3 墙 + Arachne，填充比例随意 |
+
+### SVG 矢量收缩（首选，几何零漂移）
+
+矢量最忠实：**几何一个点都不动，只改线宽**，而且不用骨架重建，不存在拆字/长毛刺。
+
+```text
+.venv\Scripts\python.exe src\tools\svg_shrink.py --input 设计.svg --out 细线.png ^
+  --size 101.6 --target-mm 0.6 --frame-mm 1.5 --px 3000
+```
+
+- 自动判别两种 SVG：**描边式**（fill 全为 none）直接改 `stroke-width`，精确等于目标线宽；**填充式**（有实体 fill）用「骨架中位半宽」量真实线宽后做**距离变换腐蚀**（`edt > (w-target)/2`），线宽减 2d、中心线严格不变。
+  ⚠ 不能用 `2*面积/周长` 估宽度：短弧/字母笔画会低估一半（实测只收到 1.27mm 而非 0.6mm）。
+- 渲染通道本机 msedge/chrome headless 截图（无 cairo/cairosvg）；`--px 3000` 对 101.6mm 件约 0.033mm/px，够准。
+- **外框必须单独给宽度**（`--frame-mm`，默认 1.5）：设计稿的外框常是 0.2mm 装饰描边，环自身面积仅 0.6% 图幅 → `find_frame` 不认 → 底面退化成圆。加粗到 1.5mm 后环面积约 4.8% ✓。外框只取剪影、不成浮雕线，加粗不影响图案观感。
+- 成品实测（christmas 设计 82.44mm → 出 101.6mm，target 0.6）：输出 PNG 骨架中位线宽 **0.61–0.67mm**，外框 1.49mm，图案 28 条，外框识别为 16.6x 填充比花瓣剪影，base 100×100×5.5mm、水密、24.7cm³。
+- **读数口径差异**：`report.json` 的 `stroke_stats` 取「每个连通块的局部最大宽度（dt.max*2）」，字母交叉/合并处的鼓包会把它抬高（本例中位 1.14、max 2.18），**不代表线的粗细**；判断收细是否到位看工具输出行「实测线宽 mm」或骨架中位。
+
+```text
+.venv\Scripts\python.exe src\tools\monoline_normalize.py --input 原图.png --out 细线.png --size 101.6 --target-mm 0.6
+.venv\Scripts\python.exe src\stamp_pipeline.py --input 细线.png --out out\<job> --size 101.6 --relief 2.5 --print-dir print --no-index
+.venv\Scripts\python.exe tests\test_monoline_normalize.py new 0.6   # 位图路线验收判据回归
+```
 
 - 目标线宽 = 2×喷嘴线宽是**上限愿望**，实际受源稿最密特征间距限制：中心线归一后相邻平行笔画间距 < 目标线宽就会并块。santa 原图实测上限 ≈0.6mm（雪花分叉/胡子短弧间距 ≈0.67mm）；要 0.9mm 必须源稿本身留更大间距（重画），否则接受合并。0.6mm 仍在竞品实测 0.3–1.4mm 区间内，0.4 喷嘴 Arachne 1–2 条变宽墙填实、无填充缝。
 - **首选代码中心线归一**：`src/tools/monoline_normalize.py`（骨架 → 剪毛刺 → 定半径重建，**不做 ∩原区域**）。验收测试 `tests/test_monoline_normalize.py`：线宽均匀、不拆字、中心线覆盖、不长毛刺；RED 基线 = `cap_stroke_width`（∩原区域留粗块，线宽 0.88–1.81 不均匀）。
@@ -38,6 +61,7 @@
 | 件 | 线宽 min/中位/max mm | 外框 | 墙数提示 |
 |---|---|---|---|
 | house 细线（生图重画，外框未加粗，反例） | 0.48 / 0.80 / 1.18 | `no_frame` → 圆底，**拒收** | 3 |
-| santa 代码归一 0.6mm（忠实原图） | 0.58 / 0.71 / 1.02 | 18 瓣继承 | 3 |
+| santa 位图代码归一 0.6mm | 0.58 / 0.71 / 1.02 | 18 瓣继承 | 3 |
+| christmas SVG 收缩 0.6mm（首选路线） | 0.61 / 0.64 / 1.49(外框) 实测 | 16.6x 填充比花瓣继承 | 6（含交叉鼓包） |
 
-证据留档：`work/_实验/monoline_code/`（代码归一源稿、忠实度对比、剖切）、`monoline_house/`、`monoline_santa/`（生图路线留档对照）；cap 收细反证见 `work/_实验/width_diag_demo.png`。
+证据留档：`work/_实验/svg_shrink/`（SVG 路线：原稿渲染、收细稿、对比板、剖切、STL）、`work/_实验/monoline_code/`（位图路线）、`monoline_house/`、`monoline_santa/`（生图反例）；cap 收细反证见 `work/_实验/width_diag_demo.png`。

@@ -34,7 +34,8 @@ D:\opencode\3Dprint\pet-relief\.venv\Scripts\python.exe D:\opencode\3Dprint\pet-
 - 默认镜像；只有确认过“正压”才加 `--no-mirror`。
 - 外轮廓：默认 `--frame-regularize auto`；明显大小瓣会按检测到的瓣数规整，生成 `frame_check.png`。`off` 保留原轮廓，`force` 强制，`--frame-petals N` 指定瓣数。
 - 常用：`--min-stroke 0.9`（0.4 喷嘴）、`--cutter-height 15`、`--no-cutter`、`--no-mirror`。
-- monoline 细线件：先 `.venv\Scripts\python.exe src\tools\monoline_normalize.py --input 原图.png --out 细线.png --size 101.6 --target-mm 0.6`（代码中心线归一，目标线宽受源稿最密间距限制，见 `references/monoline-source.md`），再跑单套命令、**不加 `--stroke-cap`**；切片默认 2–3 墙 + Arachne。核验 `frame.reason != no_frame` 且 `stroke_stats_mm.max <= 1.3`。
+- 有 SVG 源稿优先走矢量收缩：`.venv\Scripts\python.exe src\tools\svg_shrink.py --input 设计.svg --out 细线.png --size 101.6 --target-mm 0.6 --frame-mm 1.5`（描边式改 stroke-width、填充式做距离变换腐蚀，几何零漂移；外框单独加粗到 ≥2% 图幅，否则底面退化圆）。再跑单套命令，**不加 `--stroke-cap`**；切片默认 2–3 墙 + Arachne。核验 `frame.reason != no_frame`、工具输出「实测线宽 mm」≈目标（report 的 stroke_stats 取连通块最大宽度，含交叉鼓包，偏大属正常）。
+- monoline 位图件（只有 PNG/JPG 时）：`.venv\Scripts\python.exe src\tools\monoline_normalize.py --input 原图.png --out 细线.png --size 101.6 --target-mm 0.6`（代码中心线归一，目标线宽受源稿最密间距限制，见 `references/monoline-source.md`），命令同上**不加 `--stroke-cap`**；切片默认 2–3 墙 + Arachne。核验 `frame.reason != no_frame` 且 `stroke_stats_mm.max <= 1.3`。
 - 输出：`print\jobs\<job>\base.stl`、`cutter.stl`、`plate.stl`（底模同心套在边框内腔、同一文件）；`out\<job>\` 内 `report.json`、`preview.png`、`MANIFEST.md`、可选 `lines.svg`/`frame_check.png`。单套不自动出 `model.html`，需要时另跑 `src\viewer\make_viewer.py` 写到 `out\<job>\model.html`。
 - `plate.stl` 与分开件同时生成，不是替代；`--no-cutter` 时没有合盘。
 
