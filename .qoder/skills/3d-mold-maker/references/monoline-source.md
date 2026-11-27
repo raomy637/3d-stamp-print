@@ -7,8 +7,35 @@
 | 路线 | 适用 | 源稿 | 切片 |
 |---|---|---|---|
 | SVG 矢量收缩（首选） | 客户/设计源是 SVG | `src/tools/svg_shrink.py` | 默认 2–3 墙 + Arachne |
-| 位图代码归一 | 只有 PNG/JPG | `src/tools/monoline_normalize.py` | 默认 2–3 墙 + Arachne |
+| 位图 → SVG 封顶 + 花瓣等径（**位图首选**） | 只有 PNG/JPG，且要「线宽统一上限 + 外框花瓣一样大」 | `src/tools/raster_to_svg.py` | 默认 2–3 墙 + Arachne |
+| SVG 范围压缩 | SVG、线宽本来不等、要保比例 | `src/tools/svg_shrink.py --min-mm/--max-mm` | 默认 2–3 墙 + Arachne |
+| 位图代码归一 | 只有 PNG/JPG、只要整体变细 | `src/tools/monoline_normalize.py` | 默认 2–3 墙 + Arachne |
 | 粗线存量 | 已有订单、粗字重源稿 | 不动 | 100% 填充 + 8 墙（0.4 喷嘴）+ Arachne + 顶壳 6，熨烫关 |
+
+### 位图 → SVG 封顶 + 花瓣等径（2026-11-28 新增，house 实测）
+
+位图源稿要「换 SVG + 线宽最细处 1mm + 文案 1mm + 花瓣一样大」时走这条：**先矢量化，再在矢量层封顶**，图案拓扑与字形全部来自原稿（骨架定位，不用生图模型）。
+
+```text
+.venv\Scripts\python.exe src\tools\raster_to_svg.py --input 原图.png ^
+  --out-svg 图_1mm.svg --out-png 图_1mm.png --report 图_1mm.json ^
+  --size 101.6 --cap-mm 1.0 --frame-mm 1.5 --px 3000
+.venv\Scripts\python.exe src\stamp_pipeline.py --input 图_1mm.png --out out\<job> --size 101.6 ^
+  --print-dir print --job <job>
+.venv\Scripts\python.exe tests\test_raster_to_svg.py          # 5 项判据回归
+.venv\Scripts\python.exe tests\test_raster_to_svg.py red      # 基线：--cap-mm 3.0 → 判据 1 必 FAIL
+```
+
+- **只压不涨**：每块骨架 → 剪毛刺 → 逐点半径 `r = min(局部半宽, cap/2)` → 按「最近骨架点半径」重建。源稿比 cap 细的地方保持原样（用户明确要求：原稿 <1mm 的线不要拉粗）。**不要**用统一半径（那是 monoline_normalize 的行为，会把细线拉到 cap）。
+- **花瓣等径**：填充成剪影 → 极坐标测瓣数与峰/谷 → `build_scallop_polygon` 建理想等径花瓣 → 沿其边界径向内缩 `w/2` 得中线 → 描边 `--frame-mm`。实测 house 16 瓣：角间距 CV 21.5% → **0%**，峰半径 CV 0.7% → **0%**。
+- 输出 SVG 用 `fill-rule=evenodd` 单层实心路径（单位 mm，可直接进设计软件手改）；PNG 供管线。
+- 三个实测踩过的坑：
+  1. **栅格化不能「逐多边形先填外框再填孔」**——外框是环，环的孔里还装着文字，填白会把先前画好的字擦掉（表现为文字被整齐切掉一截）。改成**全局嵌套深度**绘制：深度偶数黑、奇数白，按深度升序画。
+  2. **每瓣画一整段圆弧再并集会叠出三角形补丁**——瓣很浅时圆弧跨角远大于 2π/n（house 实测 37.7° vs 11.25°）。必须用理想多边形边界反算 `r(θ)`。
+  3. **`ideal.buffer(-w)` 内缩尖点会出直线和弦补丁**——沿中线描边代替内缩。
+- 实测（house 源 1254px / 成品 101.6mm）：源线宽 0.97/1.50/1.82mm（外框 1.82）→ 输出骨架中位 **1.05mm**、95 分位 1.12、最粗块 1.19（字母交叉鼓包），源最细 0.97 的块保持 1.01；39 块 → 39 块；源骨架覆盖 100%；外框 16 瓣等径、环宽 1.5mm；base 100×100×5.5mm 水密 25.4cm³，STL 剖切确认图案完整、文字正确。
+- ⚠ `report.json` 的 `stroke_stats_mm` 仍是「每块最大宽度」，本例报 min 1.1 / 中位 1.34 / max 1.65（鼓包抬高），**判断封顶是否到位看 `raster_to_svg` 自己打印的「实测线宽」或 `house_1mm.json` 的 `out_width`**。
+- 注意：管线 `--frame-mode silhouette`（默认）会把外框环当底面剪影、丢弃框体，所以**外框线本身不会成为浮雕线**；花瓣等径影响的是成品外轮廓。需要框线也凸起时用 `--frame-mode keep`，但那会让边框变成粗浮雕，另行确认。
 
 ### SVG 矢量收缩（首选，几何零漂移）
 
@@ -56,6 +83,8 @@
 ## 核验落点（读 report.json，fail-closed）
 
 - 源稿有外框但 `frame.reason == "no_frame"` ⇒ **停**，修源稿（外框加粗/与图案分离），不得交圆底件。
+- 走 `raster_to_svg` 的件，先过 `tests/test_raster_to_svg.py`：线宽封顶（中位 ≤ cap+0.10、95 分位 ≤ cap+0.20）、不增粗、细线不拉粗、块数不少（≥90%）、源骨架覆盖 ≥95%、外框峰半径与角间距 CV < 1.5%。任一项 FAIL ⇒ 不 build。
+- 花瓣框件：`info["spacing_cv_after"]` 与 `peak_cv_after` 必须为 0（等径重建），且 `--petals` 未误改成别值；成品轮廓只有一套一致的花瓣，不能大小混排。
 - monoline 路线 `stroke_stats_mm.max > 1.3` ⇒ 源稿混入粗笔画，停，重画。注意 report 的 min 是加粗前统计，垫细线看日志「线宽体检…0 个会消失」。
 - `preview.png` 缺部件 ≠ STL 缺部件：双环源稿会触发预览把内部图案当洞填掉的渲染 bug。**事实来源是 STL 剖切**（trimesh `section` 取 z = 底板 + 浮雕/2，栅格化看闭合环嵌套）。
 
@@ -75,5 +104,7 @@
 | christmas SVG 收缩 0.6mm | 0.61 / 0.64 / 1.49(外框) 实测 | 16.6x 填充比花瓣继承 | 6（含交叉鼓包） |
 | christmas SVG 范围压缩 1.0–1.4mm | 源 1.41–1.79 → 目标 1.00–1.40 | 花瓣继承 | 7 |
 | angel_dog SVG 范围压缩（源全 0.24mm） | 全部 → 1.00mm 实测 1.00–1.48 | 无框（原稿即无花瓣环） | — |
+| house 位图→SVG 封顶 1.0mm | 源 0.97/1.50/1.82 → 输出 1.01/1.05/1.19 实测 | 16 瓣等径（间距 CV 0 %）、环 1.5mm | 4 |
+| house 基线（cap 3.0 等于不封顶） | 中位 1.54 / 95分位 1.77 → 判据 1 FAIL | — | — |
 
-证据留档：`work/_实验/svg_shrink/`（SVG 路线：原稿渲染、收细稿、对比板、剖切、STL）、`work/_实验/monoline_code/`（位图路线）、`monoline_house/`、`monoline_santa/`（生图反例）；cap 收细反证见 `work/_实验/width_diag_demo.png`。
+证据留档：`work/_实验/svg_shrink/`（SVG 路线：原稿渲染、收细稿、对比板、剖切、STL）、`work/_实验/raster2svg/`（位图→SVG 封顶路线：SVG/PNG/JSON/剖切/STL）、`work/_实验/monoline_code/`（位图归一）、`monoline_house/`、`monoline_santa/`（生图反例）；cap 收细反证见 `work/_实验/width_diag_demo.png`。

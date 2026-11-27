@@ -15,11 +15,12 @@ description: 3D打印模具制作与批次归档。线稿/文字走本仓库 sta
 4. 模具类型：凸模 `raise` / 凹模 `sink`。
 5. 有无文案 + 翻压 / 正压，据此定镜像；有文案默认镜像，无文案默认不镜像，按压方式确认结果覆盖默认。
 6. 成品尺寸、浮雕/槽深（默认 2.5）、是否出边框/手柄。
-7. 外轮廓是否花瓣框：默认 `--frame-regularize auto` 检测；预览 `frame_check.png`，明显大小瓣再规整。
+7. 外轮廓是否花瓣框：默认 `--frame-regularize auto` 检测；预览 `frame_check.png`，明显大小瓣再规整。**带花瓣的件必须花瓣等径**（同一件里不许出现大小不同的瓣），源稿是位图时直接走第 12 条路线一次做掉。
 8. 数量：只记清单，不复制多份 STL。
 9. 目标已存在：自动 `_v2`，不覆盖。
 10. 先预览，再 build；批量同样两次确认。
 11. 线宽路线：粗线存量（切片 100% 填充 + 8 墙）/ monoline 细线（源稿重画 ≈0.9mm，切片默认墙数）。细线路线禁止 `--stroke-cap` 算法收细；订单件改细线风格先给客户确认。判据与源稿要求见 `references/monoline-source.md`。
+12. 位图源稿要「换成 SVG + 线宽统一上限 + 花瓣等径」时：走 `src/tools/raster_to_svg.py --cap-mm`（**只压不涨**，源稿比 cap 细的线保持原样，用户已明确否决"细线拉到 cap"）。先跑 `tests/test_raster_to_svg.py` 六条判据，全 PASS 才 build。禁止用生图模型重画。
 
 把确认结果原样写进本次 `manifest`；未确认的项不得用默认值偷偷开工。
 
@@ -89,8 +90,10 @@ work/
 ## 线宽与源稿口径
 
 - 蜂窝/直线观感的根因在**源稿线宽**：≈2×喷嘴线宽（0.4→0.9mm）时 Arachne 2 条变宽墙填实整条线，15% 填充也不蜂窝；1.3–3.0mm 粗线只能靠切片 100% 填充 + 8 墙实心。
-- 细线观感首选 **SVG 矢量收缩** `src/tools/svg_shrink.py`（几何零漂移，描边式改 stroke-width / 填充式距离变换腐蚀，外框单独加粗）；只有位图时用 `src/tools/monoline_normalize.py`（骨架+剪毛刺+定半径，目标线宽受源稿最密间距限制）。禁止生图模型重新创作订单图案；`--stroke-cap` 量产禁用。
+- **位图要「SVG + 线宽上限 + 花瓣等径」**：`src/tools/raster_to_svg.py`（骨架逐点半径封顶 `min(半宽, cap/2)`，**只压不涨**；外框按检测瓣数等径重建；同时出 SVG + 抗锯齿 PNG）。判据回归 `tests/test_raster_to_svg.py`（green）/ `red`（cap 3.0 基线）。
+- 细线观感首选 **SVG 矢量收缩** `src/tools/svg_shrink.py`（几何零漂移，描边式改 stroke-width / 填充式距离变换腐蚀，外框单独加粗；`--min-mm/--max-mm` 范围压缩）；只有位图时用 `raster_to_svg.py`（新，首选）或 `monoline_normalize.py`（统一细线，目标线宽受源稿最密间距限制）。禁止生图模型重新创作订单图案；`--stroke-cap` 量产禁用。
 - 外框只取剪影：单闭合环、与图案分离、环自身面积 ≥2% 图幅（可单独加粗外框，不影响细线观感）；不满足会退化圆底。AI 稿多余内环按填充比 >3 删除，只涂白删除区保留灰度。
+- 花瓣件必等径：`raster_to_svg` 输出 `spacing_cv_after` / `peak_cv_after` 必须是 0；管线 `--frame-regularize auto` 只作兜底。
 - 细则、核验落点与实测见 `references/monoline-source.md`。
 
 ## 迁移历史件
@@ -106,6 +109,8 @@ work/
 - 合盘 `plate.stl` 是两个互不相连的水密壳：底模同心套在边框内腔，间隙 = `--cutter-clearance`（默认 0.8mm），面数 = 两件之和；不能焊在一起。
 - 切片口径按线宽路线：粗线存量件 Arachne + **100% 填充（底线）** + 顶壳 ≥6，熨烫关，0.4 喷嘴再加 **8 墙**（0.42×8=3.36mm ≥ 最大笔画 2.8–3.0mm），0.2 喷嘴以 100% 填充为准；monoline 细线件（max ≤1.3mm）默认 2–3 墙 + Arachne 即可，填充随意。
 - 源稿有外框但 `report.json` 的 `frame.reason == "no_frame"` ⇒ 停，修源稿外框（加粗/分离），不交圆底件；monoline 件 `stroke_stats_mm.max > 1.3` ⇒ 停，重画。预览缺部件时以 STL 剖切为准（双环源稿有预览渲染 bug）。
+- `raster_to_svg` 件另加两道：`tests/test_raster_to_svg.py` 六项全 PASS；`out_width` 中位 ≤ cap+0.10 且源稿最细块没被拉粗（用户口径）。花瓣件 `spacing_cv_after`/`peak_cv_after` 必须为 0。
+- 线宽读数以「骨架中位」为准；`report.json` 的 `stroke_stats_mm` 是每块最大宽度，字母交叉鼓包会抬高（house 封顶件报 max 1.65 而实测中位 1.05）。
 - 失败就停，交付错误信息与已生成文件路径，不强行输出。
 - 不把试模授权当客户审稿；不宣称实物打印、脱模、收缩已验证。
 
@@ -114,5 +119,5 @@ work/
 - `references/folder-layout.md`：目录树、命名、manifest、迁移映射。
 - `references/pipeline-commands.md`：两条路线的命令与参数。
 - `references/frame-regularize.md`：花瓣检测阈值、重建算法、report 字段与实测。
-- `references/monoline-source.md`：细线源稿线宽/外框/prep 要求、report 核验落点与实测。
+- `references/monoline-source.md`：细线源稿线宽/外框/prep 要求、位图→SVG 封顶流程、report 核验落点与实测。
 - `scripts/workspace.py`：plan / apply / collect / migrate-plan / migrate-apply。
