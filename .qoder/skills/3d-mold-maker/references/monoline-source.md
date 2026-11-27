@@ -9,9 +9,10 @@
 | 粗线存量 | 已有订单、粗字重源稿 | 不动 | 100% 填充 + 8 墙（0.4 喷嘴）+ Arachne + 顶壳 6，熨烫关 |
 | monoline 细线 | 新开发款、客户确认改细线风格 | 按目标线宽**重画** | 默认 2–3 墙 + Arachne，填充比例随意 |
 
-- 目标线宽 = 2×喷嘴线宽：0.4 喷嘴 → **0.9mm**；0.2 喷嘴 → **0.55mm**。出模 `--min-stroke` 取同值，把过细线垫上来。
-- **禁止算法收细上量产**：`--stroke-cap` 的骨架重建拆字形（santa 的 A 横杠悬空、M 的 V 口张开；house v3 同），只作对照实验。改线宽只能重画源稿，这是字重与内孔尺寸的几何事实。
-- 细线风格改变字重观感，订单件改风格前先给客户确认。
+- 目标线宽 = 2×喷嘴线宽是**上限愿望**，实际受源稿最密特征间距限制：中心线归一后相邻平行笔画间距 < 目标线宽就会并块。santa 原图实测上限 ≈0.6mm（雪花分叉/胡子短弧间距 ≈0.67mm）；要 0.9mm 必须源稿本身留更大间距（重画），否则接受合并。0.6mm 仍在竞品实测 0.3–1.4mm 区间内，0.4 喷嘴 Arachne 1–2 条变宽墙填实、无填充缝。
+- **首选代码中心线归一**：`src/tools/monoline_normalize.py`（骨架 → 剪毛刺 → 定半径重建，**不做 ∩原区域**）。验收测试 `tests/test_monoline_normalize.py`：线宽均匀、不拆字、中心线覆盖、不长毛刺；RED 基线 = `cap_stroke_width`（∩原区域留粗块，线宽 0.88–1.81 不均匀）。
+- **禁止生图模型重新创作订单图案**（文生图会漂移构图/字形/细节）；AI 编辑只作最后备选且必须与原图逐项对比。`--stroke-cap` 维持量产禁用。
+- 细线风格改变字重观感（粗字变中心线细字），订单件交付前先给客户确认。
 
 ## 源稿三条要求
 
@@ -28,14 +29,15 @@
 ## 命令与实测
 
 ```text
-.venv\Scripts\python.exe src\stamp_pipeline.py --input work\_实验\monoline_santa\santa_monoline.png ^
-  --out work\_实验\monoline_santa\out --size 101.6 --relief 2.5 --min-stroke 0.9 ^
-  --print-dir work\_实验\monoline_santa\print --no-index
+.venv\Scripts\python.exe src\tools\monoline_normalize.py --input 原图.png --out 细线.png --size 101.6 --target-mm 0.6
+.venv\Scripts\python.exe src\stamp_pipeline.py --input 细线.png --out out\<job> --size 101.6 --relief 2.5 ^
+  --print-dir print --no-index
+.venv\Scripts\python.exe tests\test_monoline_normalize.py new 0.6   # 验收判据回归
 ```
 
 | 件 | 线宽 min/中位/max mm | 外框 | 墙数提示 |
 |---|---|---|---|
-| house 细线（外框未加粗，反例） | 0.48 / 0.80 / 1.18 | `no_frame` → 圆底，**拒收** | 3 |
-| santa 细线（外框加粗 + 删内环） | 0.53 / 0.93 / 1.31 | 19 瓣继承（`already_regular`） | 4 |
+| house 细线（生图重画，外框未加粗，反例） | 0.48 / 0.80 / 1.18 | `no_frame` → 圆底，**拒收** | 3 |
+| santa 代码归一 0.6mm（忠实原图） | 0.58 / 0.71 / 1.02 | 18 瓣继承 | 3 |
 
-证据留档：`work/_实验/monoline_house/`、`work/_实验/monoline_santa/`（源稿、report、剖切图）；字形收细反证见 `work/_实验/width_diag_demo.png`。
+证据留档：`work/_实验/monoline_code/`（代码归一源稿、忠实度对比、剖切）、`monoline_house/`、`monoline_santa/`（生图路线留档对照）；cap 收细反证见 `work/_实验/width_diag_demo.png`。
