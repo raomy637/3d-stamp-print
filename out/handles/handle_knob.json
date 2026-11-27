@@ -1,0 +1,22 @@
+{
+  "file": "print\\test\\handle\\handle_knob.stl",
+  "engine": "mesh",
+  "scad_render_s": null,
+  "style": "knob",
+  "count": 1,
+  "grid": [
+    1,
+    1
+  ],
+  "gap_mm": 8.0,
+  "height_mm": 13.0,
+  "flange_d_mm": 16.0,
+  "grip_d_mm": 9.1,
+  "plate_size_mm": [
+    16.0,
+    16.0
+  ],
+  "triangles": 1728,
+  "watertight": true,
+  "volume_cm3_one": 1.6
+}

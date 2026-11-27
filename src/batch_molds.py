@@ -6,8 +6,8 @@
 
 清单（CSV，第一行表头，允许 # 注释行）：
     item,input,size,relief,mode
-    snowman_A,inputs/snowman_A.png,85,1.8,raise
-    star_B,inputs/star_B.png,70,2.0,sink
+    snowman_A,inputs/snowman_A.png,85,2.5,raise
+    star_B,inputs/star_B.png,70,2.5,sink
 
 产出（配对一定在同一目录里，单号就是批次下的模型名）：
     print/jobs/<batch>/<item>/base.stl      底模 / 凹模
@@ -48,7 +48,7 @@ def read_list(path: Path) -> list[dict]:
             "item": (r.get("item") or Path(r["input"]).stem).strip(),
             "input": r["input"].strip(),
             "size": float(r.get("size") or 85),
-            "relief": float(r.get("relief") or 1.8),
+            "relief": float(r.get("relief") or 2.5),
             "mode": (r.get("mode") or "raise").strip(),
         })
     return out

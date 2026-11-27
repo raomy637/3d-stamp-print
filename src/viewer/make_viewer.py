@@ -172,7 +172,7 @@ __GEO__
   rimL.position.set(0.2, -0.9, -0.4);
   scene.add(rimL);
 
-  // 掠射光：几乎平行于印面，专打浮雕侧壁，让 1.8mm 的高度差看得出来
+  // 掠射光：几乎平行于印面，专打浮雕侧壁，让 2.5mm 的高度差看得出来
   const graze = new THREE.DirectionalLight(0xffffff, 0.55);
   graze.position.set(0.9, 0.14, -1.0);
   scene.add(graze);

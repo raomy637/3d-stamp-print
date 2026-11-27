@@ -172,9 +172,9 @@ def render(data) -> str:
     L = ["# 打印清单", "",
          "> 由 `src/make_print_index.py` 自动生成，**别手改**；重跑脚本或重新出件后会自动刷新。",
          f"> 最近更新：{datetime.now().strftime('%Y-%m-%d %H:%M')}", "",
-         "**先看这一句**：能直接丢进切片器的文件全在 `print/` 下，分三个抽屉——"
+         "**先看这一句**：本表只覆盖旧 `print/` 批次，能直接丢进切片器的文件在这里分三个抽屉——"
          "`standard/` 是定稿可复用的标准件，`jobs/` 是这一单要打的模具，`test/` 是试打对比件。"
-         "其余目录（`out/`）都是给人看的。", ""]
+         "新单在 `work/订单`，验收看各件 `_记录` 里的 `report.json`；`out/` 是旧批次的记录。", ""]
 
     if bad:
         L += ["## 需要处理", ""] + [f"- {b}" for b in bad] + [""]
@@ -202,7 +202,7 @@ def render(data) -> str:
                          f"{d['size'][0]} × {d['size'][1]} × {d['size'][2]} | "
                          f"{d['faces']:,} | {'✓' if d['watertight'] else '×'} | {d['volume_cm3']} |")
             L.append("")
-        L.append("打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / 4 墙 / **顶面不熨烫** / 无支撑；"
+        L.append("打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / **100% 填充（底线）+ 0.4 喷嘴 8 墙**（0.2 喷嘴线宽细、以填充为准）/ Arachne / **顶面不熨烫** / 无支撑；"
                  "边框翼缘贴床、刃口朝上，4 墙 + 4mm brim，打完翻过来用。详见 `guides/printing.md`。")
     else:
         L.append("_还没有出过模具。跑 `python src/stamp_pipeline.py --input 图 --out out/<job>`。_")

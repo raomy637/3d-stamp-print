@@ -2,11 +2,14 @@
 
 一次要做几十套完全不同的模具时，怕的不是生成慢，是**配对错**、**找不到哪个文件是哪套**。所以这里只有两条规矩：目录就是配对关系，清单就是唯一入口。
 
+> 批量工具的输出仍落在 `print/jobs` + `out`；交付给客户前用 `workspace.py collect` 收进 `work/订单`，现行目录规则见 [output-layout.md](output-layout.md)。
+
 ## 目录：两级，配对靠路径保证
 
 ```
 print/jobs/<批次>/<单号>/base.stl      底模（或凹模）
 print/jobs/<批次>/<单号>/cutter.stl    这一套的边框
+print/jobs/<批次>/<单号>/plate.stl     合盘：底模套在边框内腔、同一文件
 out/<批次>/<单号>/                     report.json / preview.png / MANIFEST.md / model.html
 out/<批次>/INDEX.md                    批次总表
 out/<批次>/batch.json                  机器读：参数 + 耗时 + 体检
@@ -31,13 +34,13 @@ out/<批次>/batch.json                  机器读：参数 + 耗时 + 体检
 
 ```
 item,input,size,relief,mode
-A_snowman,inputs/snowman.png,85,1.8,raise
+A_snowman,inputs/snowman.png,85,2.5,raise
 B_star,inputs/star.png,70,2.0,raise
-C_tree,inputs/tree.png,85,1.8,sink
+C_tree,inputs/tree.png,85,2.5,sink
 ```
 
 - `item` 空则用 `input` 的文件名 stem
-- `size` 缺省 85、`relief` 缺省 1.8、`mode` 缺省 `raise`（`sink` = 凹模）
+- `size` 缺省 85、`relief` 缺省 2.5、`mode` 缺省 `raise`（`sink` = 凹模；2.5 槽深要配 `--base-thickness 4.0`）
 - 以 `#` 开头的行是注释，可以拿来分组
 - 同一批次里尺寸可以各不相同（每套独立算），互不影响
 

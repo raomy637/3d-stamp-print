@@ -1,0 +1,106 @@
+{
+   "checksum": "c5d7f3471d76acf632d83e63a6031d38",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13393057683926919",
+            "date_last_used": "13393427707885729",
+            "guid": "1e2dc183-4081-48ca-be51-fedecd760038",
+            "id": "6",
+            "name": "东莞市企业开办一网通办",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://reg.dg.cn/dgqcdzhdj/dist/publish/register/ywtb-index.html",
+            "visit_count": 8
+         }, {
+            "date_added": "13393057692262623",
+            "date_last_used": "0",
+            "guid": "cbd121c8-c4d5-486d-ad8e-b1d6be358305",
+            "id": "7",
+            "name": "广东省企业名称自主申报服务系统",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://amr.gd.gov.cn/qcdzhdj/nameApply/step_07.do?id=e4b3ca56-2784-46eb-adef-ffa449b80ce6",
+            "visit_count": 1
+         }, {
+            "date_added": "13393057703356255",
+            "date_last_used": "0",
+            "guid": "bcfc49e8-1b9a-4306-a1de-2e44a3f3070e",
+            "id": "8",
+            "name": "GZS_e4b3ca56-2784-46eb-adef-ffa449b80ce6.pdf",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://amr.gd.gov.cn/qcdzhdj/download/pdf/GZS_e4b3ca56-2784-46eb-adef-ffa449b80ce6.pdf",
+            "visit_count": 1
+         }, {
+            "date_added": "13393956425196170",
+            "date_last_used": "0",
+            "guid": "f6b5cd0f-73b4-48e3-8629-5db595041300",
+            "id": "9",
+            "name": "zhanghaoya.com/user",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://www.zhanghaoya.com/user",
+            "visit_count": 0
+         }, {
+            "date_added": "13425642695447424",
+            "date_last_used": "13426742569027881",
+            "guid": "d8fdee03-2895-4a1e-b7aa-fcfb21d689b8",
+            "id": "10",
+            "name": "用量",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://platform.minimaxi.com/console/usage",
+            "visit_count": 2
+         } ],
+         "date_added": "13440075299027056",
+         "date_last_used": "0",
+         "date_modified": "13425642695447424",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "收藏夹栏",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "other": {
+         "children": [  ],
+         "date_added": "13440075299027056",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "其他收藏夹",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [  ],
+         "date_added": "13440075299027056",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "移动收藏夹",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "workspaces_v2": {
+         "children": [  ],
+         "date_added": "13440075299027056",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "75aa6670-344f-549d-b742-660f029506ab",
+         "id": "4",
+         "name": "工作区",
+         "source": "unknown",
+         "type": "folder"
+      }
+   },
+   "sync_metadata": "CkEKHgiIgQISCDKVLxKiAQAAKg4QABgBIAAoBTAAOABAABIAKhhTdkhyenFtMW5qUTdzTFhpZFBCMUdRPT1IA6AGDBKMAQgCEocBChxZY1NUb252RVNQd3FDczRMMmNyVmh2NjhMOTg9EiQ4ODIzNzBiYi02OTI2LTUyY2UtYTgwZi1jNDgwZmMyMzQ1OWQYACAAKAAw9e+NyMwyONP3jcjMMkDT943IzDJKHG9QVmtod0JSYlY2NUtDV1IyK0lPTkhXb091OD1lAAAAAMI+AmAAEq0BCAoSqAEKHFF0em5SWnNHRGtvcE1kVnFVOGw3MFBITlZ6bz0SJGQ4ZmRlZTAzLTI4OTUtNGExZS1iN2FhLWZjZmIyMWQ2ODliOBgAIAAoADDzr4q87zM47a3Or+szQO2tzq/rM0ocMFZCSHdidERmUjRjRE1SMjgybml3bTR2Tll3PVofIh32b0JzVmxpNm93eVZCYmFBOVlHRzcrOUdjMjlZPWWccFLSwj4CYAUSrQEICRKoAQocSWkyVS8xSVJLc2xnVm5YeG5KWTRtUjZWcWEwPRIkZjZiNWNkMGYtNzNiNC00OGUzLTg2MjktNWRiNTk1MDQxMzAwGAAgACgAMIzMtqr1MjiB87Wq9TJAgfO1qvUyShw2SEFPK1ZaMHA2ZnFXZEppWDQ0MkFwdEV4dzA9Wh8iHe13U0lhT09IbEVoeWQ5aDltNHY5N1dTYlNqaU09ZS3Vu+jCPgJgBRKtAQgIEqgBChxhZkh3VVJhV1BBaDdSQzRGUFRyT1VLd1pxS0k9EiRiY2ZjNDllOC0xYjlhLTQzMDYtYTFkZS0yZTQ0YTNmMzA3MGUYACAAKAAwvZPw/fEyOKSY8P3xMkCkmPD98TJKHExPZUthYnVVSXhibmFmN1I2VkZDMXhEVGxEMD1aHyId2lBtWlhBTHZZcUlNa21zV1ZYTVJLNWUvTElyTT1lexNohsI+AmAFEq0BCAcSqAEKHFFMdk1RUm9RdlhuWldqY1FxUE5DV1p5N1AzST0SJGNiZDEyMWM4LWM0ZDUtNDg2ZC1hZDhlLWIxZDZiZTM1ODMwNRgAIAAoADDJvO/98TI4lL/v/fEyQJS/7/3xMkocWFU4bGRNQnhMRWFVbkkrOSs2V1BhYWdhdGZBPVofIh21VFFjZVFxdUIrcmRndWhHUmh5cWtaZTdYb0JvPWUAAAAAwj4CYAUSjAEIBBKHAQocd1JCclpMKzZQQTlhdktnak5QN0pYRExjZnZzPRIkNjE5MDMxYTgtMDYzMC01MTIzLTg4NmQtYmQ5MzJhY2I4MzAzGAAgACgAML2PweyuMzikkMHsrjNApJDB7K4zShxubXg2NXNRRHZ4SThUZ0VlditBK250dG9TbjQ9ZQAAAADCPgJgABKsAQgGEqcBChxmbGVUUk93dnptQkNSMnRJbUNhODM5U2RlVWs9EiQxZTJkYzE4My00MDgxLTQ4Y2EtYmU1MS1mZWRlY2Q3NjAwMzgYACAAKAAwx8enrvMyOJOD7/3xMkCTg+/98TJKHGZLSGx6eXF3SjJzWW91a1B2RzJSSHdXUXloYz1aHiIcai9pVGRLcGhXdnJtY2RiMGYyZEs2ZTdsMjVnPWUGKLUbwj4CYAUSjAEIARKHAQoceXhKLzZmdmtlY3I3a3A1RVF6QjR0V0xwZGJFPRIkNzJmNzIyM2ItNTExYS01OWNkLThjNjEtZmZjYmIxYWUxZmRhGAAgACgAMPTvjcjMMjiv943IzDJAr/eNyMwyShxhUkNXTGdoRjliNUlucUtJRHZ1Si9qdlFrRmM9ZQAAAADCPgJgABKMAQgDEocBChxuamdEdTg4ZUNydlhwODZwRDdmSEdjcUZwODg9EiRiMWZmYjc1MS0zNjFlLTVkYjEtYTQzOS0wN2JlODQ1ZmNkMzQYACAAKAAw+u+NyMwyOJP4jcjMMkCT+I3IzDJKHHl6TkIwMWNuNTRBN2NSVTB1VCsvUGdtVHRVbz1lAAAAAMI+AmAAMAA4AA==",
+   "version": 1
+}

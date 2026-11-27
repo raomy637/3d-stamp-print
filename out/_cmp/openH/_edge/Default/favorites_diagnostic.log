@@ -1,0 +1,26 @@
+2026-11-25 10:14:59.231: [INFO] CurrentProfilePath: D:\opencode\3D-stamp-print\out\_cmp\openH\_edge\Default
+2026-11-25 10:14:59.231: [INFO] Profiles total count: 1
+2026-11-25 10:14:59.231: [INFO] Profile: name=用户配置 1 path=D:\opencode\3D-stamp-print\out\_cmp\openH\_edge\Default lastActive=2026-11-25T10:14:59.221Z
+2026-11-25 10:14:59.231: [INFO] LastUsedProfileDir: D:\opencode\3D-stamp-print\out\_cmp\openH\_edge\Default
+2026-11-25 10:14:59.231: [INFO] MostRecentlyActiveProfile: name=用户配置 1 path=D:\opencode\3D-stamp-print\out\_cmp\openH\_edge\Default lastActive=2026-11-25T10:14:59.221Z
+2026-11-25 10:14:59.231: [INFO] OnDoneLoading sync enabled: 0
+2026-11-25 10:14:59.231: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-11-25 10:14:59.231: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-11-25 10:14:59.231: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-11-25 10:14:59.269: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-11-25 10:14:59.614: [INFO] VisibilityChanged: 0
+2026-11-25 10:15:05.468: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 0
+2026-11-25 10:15:05.471: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-25 10:15:05.473: [INFO] Primary account changed.
+2026-11-25 10:15:05.473: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-11-25 10:15:05.481: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-25 10:15:07.305: [INFO] RecordSyncInitDuration has_sync_been_enabled: 0 state: 3
+2026-11-25 10:15:35.279: [INFO] BookmarkNodeAdded, ABU: 0
+2026-11-25 10:15:35.279: [INFO] BookmarkNodeAdded, ABU: 0
+2026-11-25 10:15:35.280: [INFO] BookmarkNodeAdded, ABU: 0
+2026-11-25 10:15:35.280: [INFO] BookmarkNodeAdded, ABU: 0
+2026-11-25 10:15:35.280: [INFO] BookmarkNodeAdded, ABU: 0
+2026-11-25 10:15:35.283: [INFO] BookmarkBarPrefChanged showBar=0 showBarNTP=0
+2026-11-25 10:15:35.395: [INFO] VisibilityChanged: 1
+2026-11-25 10:15:36.228: [INFO] Sync initialization duration: 25488ms
+2026-11-25 10:43:14.670: [INFO] BookmarksSnapshot Shutdown total=5 bar=5 other=0 mobile=0 showBar=1 showBarNTP=0

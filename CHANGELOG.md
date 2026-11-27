@@ -2,6 +2,93 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.21 · 2026-11-27 · monoline 细线路线定稿：线宽靠源稿、外框靠剪影
+
+- 结论：竞品无蜂窝 + 直线观感的根因是**源稿线宽 ≈2×挤出线宽**（参考件实测 0.3–1.4mm），Arachne 2 条变宽墙填实整条线；不是建模算法差异。粗线存量件继续切片实心（100% + 8 墙），细线观感只能重画 monoline 源稿（0.4 喷嘴 0.9mm），`--stroke-cap` 维持量产禁用。
+- 外框门槛实测：`find_frame` 要求环自身面积 ≥2% 图幅；house 细线稿外框 1.8% → `no_frame` 退化圆底（拒收反例）。外框只取剪影，**可单独加粗**不影响细线观感；santa 细线稿外框加粗到 3.8% 后 19 瓣正常继承。
+- AI 细线稿 prep 两条：多余内环按「填充比 >3 且 span 0.5–0.88」删除；只涂白删除区保留灰度抗锯齿（纯 0/255 二值图 Otsu 阈值退化为 0，整图判空）。
+- 预览 bug 留档：双环源稿（外框 + 内圆同存）时 `preview.png` 把内部图案当洞填掉；STL 本身完整，核验以剖切为准。santa/house 细线验证件与剖切图在 `work/_实验/monoline_santa/`、`monoline_house/`。
+- 落点：skill 新增 `references/monoline-source.md`（源稿三要求 + report 核验 fail-closed：`no_frame` 停、monoline max>1.3 停），SKILL.md 硬门槛加第 11 条线宽路线、核验红线改双路线；`guides/design-rules.md` 增第 5 条、README 输入要求与口径标题同步。
+
+## v11.20 · 2026-11-27 · 墙数按最大笔画倒推（wall_hint），不靠收细模型
+
+- 量化规则：**墙面数 × 线宽 ≥ 该单最大笔画宽度**时，笔画内部不存在可放稀疏填充的空间，蜂窝与填充比例彻底无关。三单实测最大笔画 house 2.87 / santa 2.98 / tree 2.80mm，0.42mm 线宽对应 `wall_hint` = **7 / 8 / 7**，统一取 **8 墙**（8 × 0.42 = 3.36mm）。
+- `stamp_pipeline.py` 在出件日志打印建议墙数，`report.json` 新增 `wall_hint`（⌈max ÷ 0.42⌉，下限 2）；`MANIFEST.md`、`PRINT.md`、`README.md`、`guides/printing.md`、`SKILL.md` 统一改为「**100% 填充（底线）+ 0.4 喷嘴 8 墙（第二道保险）**」。4 墙只覆盖 1.68mm，比这宽的笔画中间仍留缝，填充一降就回蜂窝；0.2 喷嘴线宽约 0.22mm，8 墙覆盖不到 3mm，以 100% 填充为准。
+- 反证：把 2.5mm 粗字后处理压到 0.9mm（≤2 道挤出线）会把 A 的横杠、M 的 V 口、R 的碗口拆成线状——这是字重与内孔尺寸的几何事实（见 `work/_实验/width_diag_demo.png`），任何骨架/偏移算法都改不了。要细线观感只能按目标线宽**重画源稿**；这三单继续用 v2 几何 + 100% 填充（0.4 喷嘴再加 8 墙）。
+
+## v11.19 · 2026-11-27 · 线宽收细实验（默认关闭，santa A/M 形变）
+
+- 新增 `--stroke-cap MM`（**默认 0=关闭**）：按骨架 + 圆盘把宽笔画收细。实测 santa 收到 1.0mm 时，A/M 等转角多的字母在骨架分叉处出现圆角/枝杈形变，不能用于量产，故保持实验项。
+- 结论：防蜂窝靠切片 **100% 填充 + 顶壳 6 + Arachne**，不靠收细模型；凭空收细会改变字形。参考件 `Grand Tumelo-Luulia.stl` 与我们拓扑一致（单壳实心、垂直侧壁），线宽差异（0.3–1.4mm vs 1.3–2.9mm）是物理尺寸差异，不是“轮廓填充”建模差异。
+- `report.json` 新增 `stroke_cap_mm` / `stroke_capped_parts`；README、SKILL、pipeline-commands 标注为“实验、量产不用”。
+- 4246454365 的 `*_v3.stl` 保留作对照，**不建议打印**；量产仍用 `*_v2.stl`。
+
+## v11.18 · 2026-11-27 · 每次导出附合盘 plate.stl
+
+- 印章线每次同时出三件：`base.stl`、`cutter.stl`、`plate.stl`。`plate` 把底模**同心套进边框内腔**（实际批量就是这么打的），底面同贴床，两件仍独立、朝向不变（底模图案朝上、边框刃口朝上）；间隙 = `--cutter-clearance`（默认 0.8mm）。
+- `report.json` 新增 `plate`（layout/间隙/尺寸/面数/水密），`MANIFEST.md` 增加合盘行与说明；间隙 <0.2mm 时日志告警（套着打会粘连）。
+- 合盘按切片器口径重焊点后剔除边框偶尔带出的零体积膜片，三款 4 英寸订单实测均为两个水密壳、合盘整体水密。
+- `--no-cutter` 或 `--rim-w>0` 时没有合盘；批量出件自动带 `plate.stl`，skill 的 `workspace.py collect` 同步收件。
+- 文档：`SKILL.md`、`pipeline-commands.md`、`output-layout.md`、`batch.md`、`printing.md`、`README.md` 同步。
+
+## v11.17 · 2026-11-27 · 浮雕默认高度 1.8 → 2.5mm
+
+- `stamp_pipeline.py --relief` 默认改为 **2.5mm**（凸模浮雕 / 凹模槽深），`batch_molds.py` 清单缺省同步 2.5。
+- 凹模槽深仍受「底留 1mm」限制：2.5 槽深需 `--base-thickness 4.0`；被夹时日志明确提示，不再静默压到 2.0。
+- `guides/cavity.md` 更新默认深度表与例子：2.5 立体感强，但 <0.9mm 细线深宽比 >2.8:1 时难脱模，这类图降到 1.8 或加粗；槽壁打印同步改为 100% 填充 + 顶壳 6。
+- `README.md`、`guides/batch.md`、`guides/parts.md`、`guides/printing.md`、skill 的 `SKILL.md` / `folder-layout.md` / `pipeline-commands.md` 同步新默认。
+- 试打件按 2.5mm 重出：`bars_test`（凸条 2.5 高，10.2cm³）、`petals_test`（环高 2.5，18.9cm³）、`pattern_test`（48.75mm，总高 5.5，7.1cm³），三块均水密。
+- 顺手修 `render_side`：`--rim-w=0` 时“总高”误加 0.4mm 边框余量（旧图 4.8mm 件标成 5.2），现与 STL 实测一致。
+- `MANIFEST.md` 的打印件路径不再硬编码 `print/jobs/<job>/`，改用 `--print-dir` 实际路径（自定义输出目录时不再指错）。
+- 订单 4246454365（2026-11-26 的 house / santa / tree）按新规范重出：101.6mm、浮雕 2.5、house 外轮廓自动规整 16 瓣；底模 26.44 / 25.92 / 25.51cm³，全部水密；新件写入各款式 `打印模型/*_v2.stl`，记录在 `_reprint_20261127/`。
+
+## v11.16 · 2026-11-27 · 花瓣外轮廓自动检测与规整
+
+- `stamp_pipeline.py` 新增 `--frame-regularize {off,auto,force}`（默认 auto）与 `--frame-petals N`：极坐标测瓣数/峰谷/相位，用等距圆形弧重建；只在“实心度 ≥0.92、圆度 ≥0.60、8–24 瓣、振幅 2–12%、间距 CV ≥10% 或峰半径 CV ≥1.5%”时触发，动物/异形不动。
+- 规整后若切到图案自动回退（`pattern_conflict`）；面积变化限 ±20%。`report.json` 新增 `frame` 记录前后指标，记录目录新增 `frame_check.png`（原轮廓/峰谷/规整轮廓叠加）。
+- 回归：house 16 瓣、间距 CV 21.5% → 规整，面积 +0.7%；santa 18 瓣 6.8%、tree 17 瓣 4.8% 保留；angel_dog 实心度 0.787 判为非花瓣框，不误伤。
+- Skill 新增 `references/frame-regularize.md`，开工清单与预览步骤同步。
+
+## v11.15 · 2026-11-27 · 修正切片口径：凸起线条必须 100% 填充
+
+- 现象：实物凸起线条表面呈蜂窝。根因是 `guides/printing.md` 把底模填充写成 25% grid；1.0–1.5mm 宽的线条内部只剩稀疏网格，顶面几层只是架在网格上的屋顶。
+- 口径改为：**Arachne + 4 墙 + 100% 填充 + 顶壳 6 / 底壳 4**，熨烫仍关；`README.md`、`SKILL.md` 同步。
+- 新增最小试打 `work/_实验/20261127_print_test/`：`bars_test.stl` 测 0.8–3.0mm 凸条是否实心；`petals_test.stl` 对比原轮廓 / 16 瓣规整轮廓 / 正圆。house 原图实测 16 瓣，角度间距变异 21.3%，是“大小瓣”的来源。
+
+## v11.14 · 2026-11-26 · 文档治理：work 口径 / model.html 事实 / 引用体积检查
+
+- 口径统一：`README.md` 与 `guides/output-layout.md` 改以 `work/` 为现行数据根，`print/` + `out/` 标注为历史批次；目录规则的唯一事实来源指向 skill 的 `folder-layout.md`，避免两套树并行增长。
+- 事实修正：单套 `stamp_pipeline.py` 只自动出 `preview.png`/`report.json`，`model.html` 需另跑 `make_viewer.py`；`batch_molds.py` 才默认每套生成。`README.md`、`SKILL.md`、`pipeline-commands.md` 同步。
+- `PRINT.md` 表头由生成器改为“只覆盖旧 `print/` 批次”，重刷后与 `work/订单` 的验收口径（`report.json`）一致。
+- `README.md` 从 195 行压到 179 行（索引层 200 红线内），删掉与 `guides/design-rules.md` 重复的四条口径表；本地链接 0 缺失、代码路径引用 0 缺失。
+
+## v11.13 · 2026-11-25 · 三角闭合（`--void-base`）+ 抹掉光环圈线
+
+- 新增 `--void-base {both,cutter}`（默认 `both`）：`cutter` = 挖空区只作用在边框（长出内岛刃），底模保持整片 → 粘土上是一个**闭合的三角线**、泥不漏；`both` = 底模同位置开洞（旧行为）。
+- 修「圆圈外侧又出现一个圆环」：光环那圈线在**细节组**里、落在 r≈120px（5.5mm）处，正好贴着沉台外沿 r4.8。改成 `det & ~annulus(105–140px)` 抹掉它；**只动细节组、不碰外轮廓环带** —— 第一版误切了环带一段，`find_frame` 填充比 12.3 → 1.30，底面退化成 100×100 圆盘（日志"未识别到外框"）。
+- 重出 `print/jobs/angel_dog_100`（`--void-base cutter`）：底模 86.95×98.40×4.80（19,482 面、水密、16.3cm³、φ6 孔 + 沉台 + 湾处整片留料）、边框内腔 88.5×100.0（内岛闭合刃 + 3.0mm 顶桥）；新增对照件 `print/test/voidA`（`--void-base both`，底模留洞版），两份 `model.html` / 俯视截图都在。
+- 文档：`README.md` 参数表补 `--void-base`、工艺口径表改写两种成品口径；`guides/design-rules.md` 2b 补底模开洞/留料的选择、第 3 节补"光环圈线必须抹掉"及误切环带的症状；`SKILL.md` 第 2、3 条同步（仍 120 行）。
+
+## v11.12 · 2026-11-25 · 双刃闭合 + 底模留空 + 环形沉台挂环
+
+- 新增 `--void-mask PNG`（挖空区掩码，黑=挖掉，与 `--input` 同尺寸同原点，脚本校验 shape）：内腔 `difference(void)` 后，`build_cutter` 的 **wall/edge 段不扣 void**（洞口自然长出「宽度=壁厚」的内岛刃，刃口闭合），只对 **flange 段扣 void**（否则翼缘会在洞口补一块板）。第一次实现时对所有段都扣了 void，内岛根本没长出来 —— 判据是日志里没有「内岛刃顶桥」。
+- 新增 `--island-bridge MM`（默认 3.0）：`nearest_points` 在外圈与内岛之间搭顶桥，z 取 `max(height-2, top)..height`，只占顶部 2mm，翻过来压时不碰泥；内岛与外壳因此成为一个水密连通体（cutter 111,336 面、8.99cm³、单连通）。
+- 新增 `--pocket CX,CY,RIN,ROUT,DEPTH`（**模型 mm**，可重复）：`apply_pockets()` 挤出「下窄上宽 0.15mm 拔模」的环形柱体后与底模做 `trimesh.boolean.difference`，在顶面铣出环形沉台；粘土压进去凸起一圈立体环。argparse 里负数坐标必须写 `--pocket=-1.65,...`（空格形式会被当成选项）。
+- 口径修正（用户三轮回判）：**「底模要空心」不等于「粘土要空心」** —— 底模通孔只会让粘土顶出泥柱，真镂空只能靠边框的内岛刃；因此 v2 的「全实心封缝」被否，改成「边框双刃闭合 + 底模同位置留空」。挂环也从 v1 的「凸环 + 打孔」改成**环形沉台**（凸模凸起→成品凹陷，凸环只会压出凹槽），孔径改按吸管外径 φ6.0。
+- `render_top` 加 `pockets` 参数：俯视把沉台画成浅槽环带（浅灰），并在所有填色**之后**统一把底模内环挖回 0，避免沉台/图案内环把通孔盖掉（这一版预览里 φ6 孔 + 槽一次画对）。
+- 文档同步：`guides/design-rules.md` 新增「2b 轮廓闭合但中间要洞（`--void-mask` + 双刃）」、第 3 节改写为「环形沉台 + 打孔通孔」；`README.md` 参数表补 `--void-mask` / `--island-bridge` / `--pocket`，工艺口径表把「圆环」改沉台、新增「轮廓闭合但中间要洞」；`SKILL.md` 的「四件事」第 2、3 条重写并压回 120 行。
+- 重出 `print/jobs/angel_dog_100`：底模 86.95×98.40×4.80（20,030 面、水密、16.2cm³、φ6 孔 + 环沉台 r3.0/r4.8 深1.0 + 湾处留洞 5.0×9.0）、边框内腔 88.5×100.0（壁/刃 1.0、外刃 + 内岛闭合刃 + 3.0 顶桥、111,336 面、水密、8.99cm³）；`model.html`、`shot_stacked.png`、`shot_top.png`、`preview.png` 全部重出。
+
+## v11.11 · 2026-11-25 · 工艺四条口径（窄缝实心 / 打孔定位 / 单壁边框 / 镜像分类）+ 修「外轮廓对不上」
+
+- **修「外轮廓和底模对不上」**：根因是底模与边框内腔各自从剪影外扩一次（+1.2 / +2.0），窄于外扩量的 V 尖处两次跨接不一致。改成内腔定基准（`cavity = 剪影.buffer(margin)`，`base = cavity.buffer(-clearance)`），并统一 bbox 偏移（`place()` 与新的 `place_pt()` 共用 `off`，不再逐件居中）。angel_dog 实测：环隙 p95 1.29 / max 3.50 → **全边界 100% 0.80mm**。
+- 新增 `--close-gap MM`：窄缝/凹口形态学闭合后**连内腔一起填实**（只封口会留三角洞 + 边框多一圈内刃）。angel_dog 用 1.5mm 填掉 1 个内腔，两腿之间的 V 缝与尾部 2.94mm 缝变实心，尾部真镂空保留。
+- 新增 `--hole COL,ROW,D`：底模板开打孔定位通孔，浮雕层同步让位；配合「圈内并剪影做实心 + 同位置凸环」实现圆圈定位打孔（angel_dog：凸环外r4.60/内r3.50，孔 φ3.9 @(-1.6,32.0)）。
+- **边框改单壁**：`--cutter-wall` 与 `--cutter-edge` 默认都取 **1.0**（主体与刃口同厚），不再「1.2 主体 + 0.4 薄刃」两种厚度；翼缘 4×1.6 不变。要旧薄刃显式传 `--cutter-edge 0.4`。
+- `render_top` 补一笔：图案内环填色会盖掉底模通孔，现在填完图案再把底模内环挖回来，预览里能看见孔。
+- 新增 `guides/design-rules.md`（四条口径的原理、阈值依据、实测数据、参数模板）；`SKILL.md` 加「开工前必须钉死的四件事」摘要（并压回 120 行红线）；`README.md` 参数表补 `--close-gap`/`--hole`、改单壁默认；`guides/parts.md`、`guides/printing.md` 的 1.2/0.4 口径同步改 1.0 单壁。
+- 重出 `print/jobs/angel_dog_100`：内腔 88.5×100.0（成品高 10cm）、底模 86.95×98.40×4.80（15,408 面、水密、16.5cm³）、边框 98.54×110×15（壁/刃 1.0、水密），`model.html` + `shot_stacked.png` / `shot_top.png` 重出，v1 记录与打印件已归档到 `out/_archive/angel_dog_100/`。
+
 ## v11.10 · 2026-11-25 · 三条实机问题：卡死 / 边框 15 / 线条断
 
 - **间隙 0.4 → 0.8**（`--cutter-clearance` 默认改 0.8）。实测证据：`bakers_v5` 底模 84.2 对 85.0 内腔，设计 0.4/边，STL 实测**净间隙 0.28–0.48mm**，FDM 打完（0.2 喷嘴 4 墙，外壁胀 0.05–0.15、内壁缩 0.05–0.1）必然卡死。改成 0.8 后 `bakers_v6` 实测 **0.72 / p05 0.77 / 中位 0.90mm**，全周 ≥0.6。底模随之从 84.2 缩到 83.4。

@@ -1,11 +1,18 @@
 # 打印清单
 
 > 由 `src/make_print_index.py` 自动生成，**别手改**；重跑脚本或重新出件后会自动刷新。
-> 最近更新：2026-11-25 10:32
+> 最近更新：2026-11-27 17:44
 
-**先看这一句**：能直接丢进切片器的文件全在 `print/` 下，分三个抽屉——`standard/` 是定稿可复用的标准件，`jobs/` 是这一单要打的模具，`test/` 是试打对比件。其余目录（`out/`）都是给人看的。
+**先看这一句**：本表只覆盖旧 `print/` 批次，能直接丢进切片器的文件在这里分三个抽屉——`standard/` 是定稿可复用的标准件，`jobs/` 是这一单要打的模具，`test/` 是试打对比件。新单在 `work/订单`，验收看各件 `_记录` 里的 `report.json`；`out/` 是旧批次的记录。
 
 ## 订单模具（`print/jobs/`，一单一个目录）
+
+### `angel_dog_100` （凸模 · 成品 100.0mm · 浮雕 1.8mm · 底板 3.0mm）
+
+| 件 | 文件 | 外形 mm | 面数 | 水密 | 体积 cm³ |
+|---|---|---|---|---|---|
+| 底模 | `print/jobs/angel_dog_100/base.stl` | 86.9 × 98.4 × 4.8 | 19,482 | ✓ | 16.33 |
+| 边框 | `print/jobs/angel_dog_100/cutter.stl` | 98.5 × 110.0 × 15.0 | 111,336 | ✓ | 8.99 |
 
 ### `bakers_cav_v6` （凹模 · 成品 85.0mm · 槽深 1.8mm 外张 5.0° · 底板 3.0mm）
 
@@ -35,7 +42,7 @@
 | 底模 | `print/jobs/2026-11-24_xmas_pair/A_xmas/base.stl` | 84.2 × 84.2 × 4.8 | 37,890 | ✓ | 18.56 |
 | 边框 | `print/jobs/2026-11-24_xmas_pair/A_xmas/cutter.stl` | 95.4 × 95.4 × 12.0 | 17,736 | ✓ | 5.32 |
 
-打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / 4 墙 / **顶面不熨烫** / 无支撑；边框翼缘贴床、刃口朝上，4 墙 + 4mm brim，打完翻过来用。详见 `guides/printing.md`。
+打印要点：底模平板贴床、图案（或凹槽）朝上，0.2 喷嘴 0.10 层高 / **100% 填充（底线）+ 0.4 喷嘴 8 墙**（0.2 喷嘴线宽细、以填充为准）/ Arachne / **顶面不熨烫** / 无支撑；边框翼缘贴床、刃口朝上，4 墙 + 4mm brim，打完翻过来用。详见 `guides/printing.md`。
 
 ## 标准件（`print/standard/`，定稿复用，换图不用重打）
 
@@ -57,6 +64,34 @@
 
 | 文件 | 用途 | 外形 mm | 面数 | 水密 |
 |---|---|---|---|---|
+| `print/test/fillet/fR10/base.stl` | fR10 | 86.6 × 98.4 × 4.8 | 30,542 | ✓ |
+| `print/test/fillet/fR05/base.stl` | fR05 | 86.6 × 98.4 × 4.8 | 31,092 | ✓ |
+| `print/test/handle/handle_straight.stl` | handle | 15.0 × 15.0 × 25.0 | 1,344 | ✓ |
+| `print/test/handle/handle_knob.stl` | handle | 16.0 × 16.0 × 13.0 | 1,728 | ✓ |
+| `print/test/flange/fC/jobs/fC/cutter.stl` | fC | 90.3 × 102.0 × 15.0 | 79,446 | ✓ |
+| `print/test/flange/fC/jobs/fC/base.stl` | fC | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/flange/fB/jobs/fB/cutter.stl` | fB | 95.3 × 107.0 × 15.0 | 101,912 | ✓ |
+| `print/test/flange/fB/jobs/fB/base.stl` | fB | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/flange/fA/jobs/fA/cutter.stl` | fA | 98.3 × 110.0 × 15.0 | 100,530 | ✓ |
+| `print/test/flange/fA/jobs/fA/base.stl` | fA | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/holeJ/jobs/holeJ/cutter.stl` | holeJ | 98.3 × 110.0 × 15.0 | 100,530 | ✓ |
+| `print/test/holeJ/jobs/holeJ/base.stl` | holeJ | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/openH/jobs/openH/cutter.stl` | openH | 98.3 × 110.0 × 15.0 | 100,530 | ✓ |
+| `print/test/openH/jobs/openH/base.stl` | openH | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/openG/jobs/openG/cutter.stl` | openG | 98.3 × 110.0 × 15.0 | 100,530 | ✓ |
+| `print/test/openG/jobs/openG/base.stl` | openG | 86.6 × 98.4 × 4.8 | 15,034 | ✓ |
+| `print/test/openF/jobs/openF/cutter.stl` | openF | 98.3 × 110.0 × 15.0 | 100,530 | ✓ |
+| `print/test/openF/jobs/openF/base.stl` | openF | 86.6 × 98.4 × 4.8 | 19,020 | ✓ |
+| `print/test/openE/jobs/openE/cutter.stl` | openE | 98.5 × 110.0 × 15.0 | 123,318 | ✓ |
+| `print/test/openE/jobs/openE/base.stl` | openE | 86.9 × 98.4 × 4.8 | 19,530 | ✓ |
+| `print/test/voidD/jobs/voidD/cutter.stl` | voidD | 98.5 × 110.0 × 15.0 | 114,412 | ✓ |
+| `print/test/voidD/jobs/voidD/base.stl` | voidD | 86.9 × 98.4 × 4.8 | 19,822 | ✓ |
+| `print/test/voidC/jobs/voidC/cutter.stl` | voidC | 98.5 × 110.0 × 15.0 | 113,518 | ✓ |
+| `print/test/voidC/jobs/voidC/base.stl` | voidC | 86.9 × 98.4 × 4.8 | 19,822 | ✓ |
+| `print/test/voidB/jobs/voidB/cutter.stl` | voidB | 98.5 × 110.0 × 15.0 | 111,336 | ✓ |
+| `print/test/voidB/jobs/voidB/base.stl` | voidB | 86.9 × 98.4 × 4.8 | 19,482 | ✓ |
+| `print/test/voidA/jobs/voidA/cutter.stl` | voidA | 98.5 × 110.0 × 15.0 | 111,336 | ✓ |
+| `print/test/voidA/jobs/voidA/base.stl` | voidA | 86.9 × 98.4 × 4.8 | 19,746 | ✓ |
 | `print/test/handle_layer/layer_3.stl` | handle_layer | 65.0 × 15.0 × 25.0 | 4,032 | ✓ |
 
 ## 非打印产物（都是给人看的）

@@ -1,0 +1,74 @@
+{
+  "input": "inputs\\angel_dog_100.png",
+  "engine": "scad",
+  "engine_note": "2D 轮廓交给 OpenSCAD/CGAL 挤出与布尔",
+  "scad_render_s": 0.4,
+  "size_mm": 100.0,
+  "size_semantics": "成品尺寸（分体模式下 = 边框内腔；底模再内缩 cutter_clearance）",
+  "stamp_size_mm": [
+    86.95,
+    98.4
+  ],
+  "base_thickness": 3.0,
+  "relief": 1.8,
+  "relief_mode": "raise",
+  "relief_mode_note": "印章：图案凸起，成品图案凹陷",
+  "cavity_draft_deg": 0.0,
+  "rim_w_mm": 0.0,
+  "rim_h_above_relief_mm": 0.0,
+  "total_height_mm": 4.8,
+  "mirrored": true,
+  "close_gap_mm": 1.5,
+  "holes": [
+    {
+      "x": -1.65,
+      "y": 31.99,
+      "d_mm": 6.0
+    }
+  ],
+  "min_stroke_mm": 0.9,
+  "bbox_mm": [
+    86.948,
+    98.396,
+    4.8
+  ],
+  "triangles": 19746,
+  "watertight": true,
+  "volume_cm3": 16.2,
+  "pattern_parts": 14,
+  "thin_parts_fixed": 14,
+  "thin_parts_at_risk": 0,
+  "stroke_stats_mm": {
+    "parts": 14,
+    "min": 0.33,
+    "p10": 0.33,
+    "median": 0.38,
+    "max": 0.67,
+    "lt_0.5": 13,
+    "lt_0.6": 13,
+    "lt_0.8": 14,
+    "lt_1.0": 14
+  },
+  "cutter": {
+    "file": "print\\test\\voidA\\jobs\\voidA\\cutter.stl",
+    "inner_size_mm": [
+      88.55,
+      100.0
+    ],
+    "wall_mm": 1.0,
+    "height_mm": 15.0,
+    "edge_mm": 1.0,
+    "edge_h_mm": 3.0,
+    "edge_mode": "vertical",
+    "flange_mm": [
+      4.0,
+      1.6
+    ],
+    "clearance_mm": 0.8,
+    "triangles": 111336,
+    "watertight": true
+  },
+  "handle": {
+    "note": "独立标准件，见 print/standard/handle_slim.stl（src/make_handle.py）"
+  }
+}

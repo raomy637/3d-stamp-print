@@ -1,7 +1,7 @@
 {
-  "file": "print\\standard\\handle_straight.stl",
-  "engine": "scad",
-  "scad_render_s": 0.2,
+  "file": "print\\test\\handle\\handle_straight.stl",
+  "engine": "mesh",
+  "scad_render_s": null,
   "style": "straight",
   "count": 1,
   "grid": [

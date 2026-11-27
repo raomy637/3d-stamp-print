@@ -7,7 +7,7 @@
 
 ```
 python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_cav --size 85 `
-    --relief 1.8 --relief-mode sink --cavity-draft 5
+    --relief 2.5 --base-thickness 4.0 --relief-mode sink --cavity-draft 5
 ```
 
 ## 几何怎么做的
@@ -15,7 +15,7 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | 步骤 | 做法 |
 |---|---|
 | 底板 | 整块拉到 `--base-thickness`（3.0），不再有"底板挖掉图案"的加法 |
-| 凹槽 | 图案轮廓从顶面往下挖 `--relief`（3.0 → 槽底在 1.2） |
+| 凹槽 | 图案轮廓从顶面往下挖 `--relief`（底板 4.0 挖 2.5 → 槽底在 1.5） |
 | 脱模锥度 | 槽壁向开口外张 `--cavity-draft` 度：槽底窄、开口宽，粘土拔得出来 |
 | 锥面实现 | 按 `--cavity-segments`（默认 4）段阶梯近似，每段轮廓用 buffer 递进 |
 | 布尔 | 整块底板 −（分段凹槽并集）。图案把顶面切成许多互不相连的小岛，union 前的 volume 预检会报错，所以走 `check_volume=False` 让 manifold 自己合并 |
@@ -33,17 +33,18 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 | 深而窄的槽 | 5° 以上 | 同上 |
 | 柔性硅胶模 | ≈0° | 模子自己能掰开，不适用 3D 打印 |
 
-本流水线默认 5°：深度 1.8 时开口比槽底单边宽 `1.8 × tan5° ≈ 0.16mm`，肉眼几乎看不出来，但脱模差别很大。`--cavity-draft 0` 可以关掉，代价是细线要刷油 + 冷冻才脱得干净。
+本流水线默认 5°：深度 2.5 时开口比槽底单边宽 `2.5 × tan5° ≈ 0.22mm`，肉眼几乎看不出来，但脱模差别很大。`--cavity-draft 0` 可以关掉，代价是细线要刷油 + 冷冻才脱得干净。
 
 ## 深度的取舍
 
 | 深度 | 效果 | 风险 |
 |---|---|---|
 | 1.2–1.5 | 图案清晰、脱模轻松 | 浅浮雕感，粘土填不满细缝时线条变弱 |
-| 1.8（默认） | 对比最强的常规值 | 细线（<0.8mm）容易卡在槽里 |
-| 2.5–3.0 | 立体感强 | 槽容积大，粘土要用力压；细线几乎必断 |
+| 1.8 | 细线（<0.9mm）的安全档 | 立体感弱于 2.5 |
+| 2.5（默认） | 立体感强，与凸模同高 | 槽容积大，粘土要用力压；<0.9mm 细线几乎必断 |
+| 3.0+ | 需要底板 ≥4.0，否则被压回 4.0−1.0 | 深宽比过高，脱模困难 |
 
-深度别超过线宽的 3 倍。0.6mm 宽的笔画挖 1.8mm，深宽比 3:1，属于"能压出来但难脱"的边界。
+深度别超过线宽的 3 倍。0.6mm 宽的笔画挖 2.5mm，深宽比 4.2:1，几乎必断——这类图要么加粗到 0.9mm 以上，要么单独把 `--relief` 降到 1.8。
 
 ## 打印
 
@@ -53,7 +54,8 @@ python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_c
 |---|---|---|
 | 层高 | 0.10–0.12 | 0.16 |
 | 墙 | 4 | 4 |
-| 填充 | 25% | 25% |
+| 填充 | **100%**（槽壁才 1mm 宽，稀疏填充会留空腔） | **100%** |
+| 顶壳 / 底壳 | 6 / 4 | 6 / 4 |
 | 顶面 | **不熨烫**（熨烫会把窄槽口熨窄、甚至填死） | **不熨烫** |
 | 最小线宽 | `--min-stroke 0.55` | `--min-stroke 0.9` |
 

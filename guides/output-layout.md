@@ -1,59 +1,60 @@
-# 输出放哪：src / print / out
+# 输出放哪：work（现行）/ print + out（旧批次）
 
 ## 一句话规则
 
-**脚本全在 `src/`；能直接丢进切片器的 `.stl` 全在 `print/`（分 standard / jobs / test 三档）；其余记录在 `out/<job>/`。**
+**新单一律进 `work/`**，目录树、命名与 manifest 以 [folder-layout.md](../.qoder/skills/3d-mold-maker/references/folder-layout.md) 为唯一事实来源；**历史批次仍留在 `print/`（可打印件）+ `out/`（记录）**，脚本与 `PRINT.md` 继续兼容。
 
-## 目录长这样
+## 现行：work/
 
 ```
-3D-stamp-print/
-├─ src/                          ← 所有代码，和产出彻底分开
-│   ├─ stamp_pipeline.py           线稿 → 底模 + 边框 + 清单 + 预览
-│   ├─ make_handle.py              手柄（标准件）
-│   ├─ make_print_index.py         扫 print/ 生成 PRINT.md
-│   ├─ viewer/                     make_viewer.py（单文件 3D）+ libs/
-│   └─ tools/                      handle_layer_test.py（层高对比）・preview_handle_batch.py（排布图）
-├─ print/                        ← ★ 唯一"拿去打印"的地方，只放 .stl
-│   ├─ standard/                   定稿、可复用、不跟单走
-│   │   ├─ handle_straight.stl        手柄 1 个（φ10 柄 / φ15 底盘 / 高 25）
-│   │   ├─ handle_straight_x6.stl     手柄 6 个一排（130×15）
-│   │   └─ handle_straight_x12.stl    手柄 12 个一盘（130×38）
-│   ├─ jobs/                       一单一个目录；批量时是 批次/单号 两级
-│   │   ├─ bakers_v5/
-│   │   │   ├─ base.stl               底模（凸模压图案）
-│   │   │   └─ cutter.stl             边框
-│   │   └─ 2026-11-24_xmas_pair/      批次目录：每套一个单号子目录
-│   │       ├─ A_xmas/{base,cutter}.stl
-│   │       └─ B_xmas_cav/{base,cutter}.stl
-│   └─ test/                       试打、对比、实验件，随时可删
-│       └─ handle_layer/layer_3.stl   层高对比件（三个手柄一排）
-├─ out/
-│   ├─ <job>/                    每次运行的全部记录
-│   │   ├─ MANIFEST.md             这一单出了什么、哪个能打（自动生成）
-│   │   ├─ report.json             几何体检：尺寸/面数/水密/线宽/边框参数
-│   │   ├─ preview.png             三栏预览（实物 / 压印效果 / 剖面）
-│   │   ├─ model.html              单文件 3D 预览，双击即开
-│   │   ├─ lines.svg               分层 SVG（--svg 才有）
-│   │   └─ shot_*.png              视角截图（视口调试后留存）
-│   ├─ <批次>/                    批量时：每套一个子目录 + INDEX.md + batch.json
-│   ├─ handles/                  手柄体检 json + 联排俯视图 + layer_test.md
-│   └─ _archive/                 淘汰件留档（<job>/ 记录 + <job>/print/ 打印件），别拿去打
-├─ inputs/                      源图（含批量清单 batch_*.csv）
-├─ guides/                      parts / cavity / printing / openscad / batch / output-layout
-├─ PRINT.md                     ← 打印总表（自动生成）
-└─ README.md · CHANGELOG.md
+work/
+├─ _inbox/<批次名>/                收件箱（只读，复制不移动）
+├─ 打样/<项目名>/{原始图,打印模型,_记录}
+├─ 订单/<YYYYMMDD>/<订单号>/...    多款式时加一层 <款式>
+├─ _实验/                          探针、对比、print/test
+└─ _归档/                          历史件、_archive、无法归类件
 ```
 
-## 三档的分界（为什么要这么分）
+- `打印模型/` 只放 `base.stl`、`cutter.stl`、`plate.stl`（印章；`plate` = 两件同一文件）或 `outline.stl`、`lid.stl`（宠物浮雕）。
+- 报告、`preview.png`、`model.html`、`frame_check.png`、`validation.json` 等进同级 `_记录/`。
+- 归类用 `workspace.py`：`plan`（只读）→ `apply`（复制原图）→ 预览 → `collect`（收 STL 与记录）。
+- `work/` 已 gitignore；交付件不进 git。
+
+## 旧批次：print/ + out/
+
+```
+print/standard/                    定稿手柄：单个 / x6 / x12
+print/jobs/<job>/                  单套：base.stl + cutter.stl + plate.stl（底模套边框合盘）
+print/jobs/<批次>/<单号>/          批量：同样 base + cutter 同目录
+print/test/                        试打、层高对比、参数实验
+out/<job>/                         report / preview / model.html / lines.svg / MANIFEST
+out/<批次>/<单号>/                 批量记录
+out/<批次>/INDEX.md + batch.json   批次总表与机器读结果
+out/handles/                       手柄体检图与对比记录
+out/_archive/                      淘汰件留档
+```
 
 | 抽屉 | 含义 | 生命周期 | 谁往里写 |
 |---|---|---|---|
-| `print/standard/` | 定稿的标准件，一套配所有图案 | 长期；换尺寸才重做 | `src/make_handle.py` |
-| `print/jobs/<job>/` | 这一单的模具，跟图案绑定 | 单次；换图必须重做 | `stamp_pipeline.py --out out\<job>`；批量用 `batch_molds.py` |
-| `print/test/` | 试打、层高对比、参数实验 | 临时；可以整目录删 | `src/tools/handle_layer_test.py` 等 |
+| `print/standard/` | 定稿标准件，一套配所有图案 | 长期；换尺寸才重做 | `src/make_handle.py` |
+| `print/jobs/<job>/` | 这一单的模具，跟图案绑定 | 单次；换图必须重做 | `stamp_pipeline.py`；批量 `batch_molds.py` |
+| `print/test/` | 试打、层高对比、参数实验 | 临时；可整目录删 | `src/tools/` 等 |
 
-判断"这文件该不该保留"只看一条：**它是跟图案走的（jobs），还是跟模具标准走的（standard），还是只是试一下（test）**。
+判断“该不该保留”只看一条：**跟图案走的（jobs）、跟标准走的（standard）、还是只试一下（test）**。
+
+## 预览与 model.html（按工具分口径）
+
+- `stamp_pipeline.py` 自动出 `preview.png`、`report.json`、`MANIFEST.md`，**不出 `model.html`**。
+- 单套要 3D HTML 时，另跑 `src/viewer/make_viewer.py`：
+
+```powershell
+python src\viewer\make_viewer.py --stl print\jobs\bakers_v6\base.stl --cutter print\jobs\bakers_v6\cutter.stl `
+  --handle print\standard\handle_straight.stl --report out\bakers_v6\report.json `
+  --out out\bakers_v6\model.html
+```
+
+- `batch_molds.py` 默认每套自动生成 `model.html`；只有 `--no-html` 才跳过。
+- 新 `work/` 单：把 HTML 输出到该件 `_记录` 下的 `model.html`，再跑 `workspace.py collect` 收件。
 
 ## 批量：多一级批次，配对不变
 
@@ -62,45 +63,38 @@ print/jobs/<批次>/<单号>/{base,cutter}.stl
 out/<批次>/<单号>/…  +  out/<批次>/INDEX.md、batch.json
 ```
 
-`<批次>` 是 `日期_主题_数量` 形式的纯 ASCII 名，`<单号>` 是图案 slug。**底模和边框永远同目录**，跨套不会混，拷 U 盘只拷一个文件夹。清单格式、命名规则、并行参数与性能实测见 `batch.md`；`PRINT.md` 两种结构都认，显示成 `xmas40/A_snowman`。
+`<批次>` 是 `日期_主题_数量` 形式的纯 ASCII 名，`<单号>` 是图案 slug。**底模和边框永远同目录**，跨套不会混。批量跑完后用 `workspace.py collect` 收进 `work/订单`；清单格式、命名、并行参数与性能见 [batch.md](batch.md)。
 
 ## 命名规则（脚本自动保证，别手改）
 
 | 文件 | 含义 | 谁生成 |
 |---|---|---|
-| `jobs/<job>/base.stl` | 底模 / 凹模 | `stamp_pipeline.py --out out\<job>` |
+| `jobs/<job>/base.stl` | 底模 / 凹模 | `stamp_pipeline.py` |
 | `jobs/<job>/cutter.stl` | 边框 | 同上（`--no-cutter` 时不出） |
-| `jobs/<批次>/<单号>/{base,cutter}.stl` | 批量时的同一对 | `batch_molds.py --batch <批次>` |
-| `standard/handle_straight.stl` | 手柄单个（定稿） | `make_handle.py` |
-| `standard/handle_straight_x6.stl` / `_x12.stl` | 手柄联排 | `make_handle.py --count 6 / 12` |
-| `test/<组名>/<任意>.stl` | 试打件 | `tools/` 下的脚本或你手放 |
+| `jobs/<job>/plate.stl` | 合盘：底模同心套在边框内腔、同一 STL（两件独立） | 同上（`--no-cutter` 时不出） |
+| `jobs/<批次>/<单号>/{base,cutter}.stl` | 批量时的同一对 | `batch_molds.py` |
+| `print/standard/handle_straight.stl` | 手柄单个（定稿） | `make_handle.py` |
+| `print/standard/handle_straight_x6.stl` / `_x12.stl` | 手柄联排 | `make_handle.py --count 6 / 12` |
+| `test/<组名>/<任意>.stl` | 试打件 | `tools/` 下的脚本或手放 |
 
-`<job>` 就是你给 `--out` 起的名字（`out\bakers_v5` → 目录 `out/bakers_v5`、件在 `print/jobs/bakers_v5/`）。换新图案就换个名字，老的不覆盖。批量时 `<job>` 是 `<批次>/<单号>`，两级一起构成 job 名——底模和边框永远同目录，配对不靠文件名。
+`<job>` 就是 `--out` 的最后一段目录名（`out\bakers_v6` → `out/bakers_v6`、件在 `print/jobs/bakers_v6/`）。批量时 `<job>` 是 `<批次>/<单号>`，两级一起构成 job 名——配对不靠文件名。
 
-## 每次运行留下什么
+## PRINT.md 的覆盖范围
 
-```powershell
-python src\stamp_pipeline.py --input inputs\bakers_framed.png --out out\bakers_v5 --size 85 --relief 1.8
-```
-
-- `print/jobs/bakers_v5/base.stl`、`print/jobs/bakers_v5/cutter.stl` → **可打印**
-- `out/bakers_v5/` 里的 report / preview / lines.svg / MANIFEST.md / model.html → **只给人看**
-
-跑完自动刷新根目录 `PRINT.md` 与该单的 `MANIFEST.md`。
-
-## PRINT.md 是自动的
-
-- 由 `src/make_print_index.py` 扫描 `print/` 三档生成，**不要手改**；重出件后自动重算。
-- 单独检查：`python src\make_print_index.py --check`，退出码 0 = 全部可打。
+- 由 `src/make_print_index.py` 扫描 `print/` 三档生成，**不要手改**；只覆盖旧批次。
+- 单独检查：`python src\make_print_index.py --check`，退出码 0 = 旧批次全部可打。
 - 报的问题分四类：读不出来、非水密、`jobs/<job>` 只有底模没边框、文件名不合约定。
+- **`work/` 订单不在 `PRINT.md` 内**；验收读各件 `_记录` 里的 `report.json`（宠物读 `validation.json`）。
 
-## 淘汰与归档（不删）
+## 淘汰与归档
 
-被新版取代的成品挪到 `out/_archive/`，只留档、不打印；归档原因写进 `CHANGELOG.md`。真正删除要你点头——脚本和 Agent 都不会自己删。
+- 旧批次淘汰件挪到 `out/_archive/`，只留档、不打印；原因写进 `CHANGELOG.md`。
+- 新单历史件进 `work/_归档/`；迁移只复制、不删旧件，映射见 folder-layout。
+- 真正删除要用户点头——脚本和 Agent 都不会自己删。
 
 ## 老写法兼容
 
-- `--out out\bakers_v5` → 目录 `out/bakers_v5`
-- `--out out\bakers_v5.stl` → 也认，按 `bakers_v5` 处理（老命令行不用改）
-- 旧布局的 `print\<job>_base.stl` 已迁到 `print/jobs/<job>/base.stl`；脚本不再往 `print/` 根写件
-- 要换打印根目录用 `--print-dir <目录>`，仍然沿用 `jobs/<job>/` 的子结构
+- `--out out\bakers_v6` → 目录 `out/bakers_v6`
+- `--out out\bakers_v6.stl` → 也认，按 `bakers_v6` 处理
+- 旧布局的 `print\<job>_base.stl` 已迁到 `print/jobs/<job>/base.stl`
+- 换打印根目录用 `--print-dir <目录>`，仍沿用 `jobs/<job>/` 子结构

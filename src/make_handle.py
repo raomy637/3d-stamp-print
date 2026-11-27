@@ -75,12 +75,29 @@ HANDLE_COLUMN = [
     (4.00, 25.00),   # 90°，顶上留 φ8 平台
     (0.0, 25.00),
 ]
-STYLES = {"dome": HANDLE_PROFILE, "straight": HANDLE_STRAIGHT, "column": HANDLE_COLUMN}
+# 小圆钮款（对照件，2026-11-25 用户按实物照片提的方案）：
+# 底盘 φ16 × 1.2 粘接，整体矮圆顶收到 13 高，顶留 φ2 小平面。
+HANDLE_KNOB = [
+    (0.0, 0.0),
+    (8.0, 0.0),      # 底盘 φ16
+    (8.0, 1.2),      # 底盘厚 1.2，粘接面 π·8² = 201mm²
+    (7.8, 2.6),
+    (7.2, 4.6),      # 圆顶母线（近似 1/4 椭圆，收得比直筒快）
+    (6.4, 6.8),
+    (5.4, 8.8),
+    (4.2, 10.5),
+    (2.8, 11.9),
+    (1.4, 12.8),
+    (0.0, 13.0),     # 总高 13
+]
+STYLES = {"dome": HANDLE_PROFILE, "straight": HANDLE_STRAIGHT, "column": HANDLE_COLUMN,
+          "knob": HANDLE_KNOB}
 # 标准件命名（换图不重打，所以名字必须稳定）
 NAMES = {
     "dome": ("handle_slim.stl", "handle_x{n}.stl"),
     "straight": ("handle_straight.stl", "handle_straight_x{n}.stl"),
     "column": ("handle_column.stl", "handle_column_x{n}.stl"),
+    "knob": ("handle_knob.stl", "handle_knob_x{n}.stl"),
 }
 
 
@@ -183,8 +200,9 @@ def main():
     ap.add_argument("--gap", type=float, default=8.0, help="件间距 mm")
     ap.add_argument("--cols", type=int, default=None, help="每行几个，默认按床宽自动")
     ap.add_argument("--segments", type=int, default=96)
-    ap.add_argument("--style", choices=["dome", "straight", "column"], default="dome",
-                    help="dome=圆顶款（默认）；straight=φ11.8 直筒；column=φ14 直筒，斜面最少")
+    ap.add_argument("--style", choices=["dome", "straight", "column", "knob"], default="dome",
+                    help="dome=圆顶款（默认）；straight=φ11.8 直筒；column=φ14 直筒，斜面最少；"
+                         "knob=小圆钮（底盘 φ16 / 高 13，对照件）")
     ap.add_argument("--engine", choices=["scad", "mesh"], default="scad",
                     help="scad=OpenSCAD rotate_extrude（改剖面只动一个数组）；mesh=旧 revolve()")
     ap.add_argument("--json", default=None, help="体检报告输出路径；默认 out/handles/")
