@@ -53,8 +53,12 @@ from monoline_normalize import prune_spurs
 # 1. 读图与二值化
 # --------------------------------------------------------------------------- #
 
-def load_mask(path: Path, thr: float | None = None):
+def load_mask(path: Path, thr: float | None = None, work_scale: float = 1.0):
     g = np.asarray(Image.open(path).convert("L"))
+    if work_scale > 1.0:
+        im = Image.fromarray(g)
+        g = np.asarray(im.resize((int(round(g.shape[1] * work_scale)),
+                                  int(round(g.shape[0] * work_scale))), Image.LANCZOS))
     t = float(thr) if thr is not None else float(filters.threshold_otsu(g))
     if t <= 1.0:                      # 纯 0/255 图 Otsu 会退化
         t = 128.0
@@ -101,13 +105,18 @@ def summarize(rows):
 # 3. 线宽封顶（只压不涨，中心线不动）
 # --------------------------------------------------------------------------- #
 
-def cap_mask(mask: np.ndarray, cap_px: float, min_area: int = 6) -> np.ndarray:
+def cap_mask(mask: np.ndarray, cap_px: float, min_area: int = 6, smooth_sigma: float = 0.0) -> np.ndarray:
     """每块骨架 → 逐点半宽 min(dt, cap/2) → 按最近骨架点半径重建。
 
     与"直接腐蚀"的区别：腐蚀在交叉/接头处会留粗块、在窄处削断；
     这里半径由骨架点决定性给出，中心线严格不动。
+    `smooth_sigma` 只平滑"半径值"，让沿骨架的宽度不随像素台阶抖（边缘不再呈波浪）。
     """
     dt_full = ndi.distance_transform_edt(mask)
+    if smooth_sigma > 0:
+        dt_r = ndi.gaussian_filter(dt_full, smooth_sigma)
+    else:
+        dt_r = dt_full
     lab, n = ndi.label(mask, np.ones((3, 3)))
     out = np.zeros_like(mask)
     half = cap_px / 2.0
@@ -122,7 +131,7 @@ def cap_mask(mask: np.ndarray, cap_px: float, min_area: int = 6) -> np.ndarray:
             out |= reg
             continue
         rval = np.zeros(mask.shape, dtype=float)
-        rval[ys, xs] = np.minimum(dt_full[ys, xs], half)
+        rval[ys, xs] = np.minimum(dt_r[ys, xs], half)
         # 每个像素归到最近骨架点，用该点半径判定是否保留
         dist, inds = ndi.distance_transform_edt(~sk, return_indices=True)
         near = rval[inds[0], inds[1]]
@@ -339,6 +348,12 @@ def main():
     ap.add_argument("--frame-mm", type=float, default=1.5, help="外框环线宽 mm")
     ap.add_argument("--petals", default="auto", help="auto / off / 具体瓣数")
     ap.add_argument("--px", type=int, default=3000)
+    ap.add_argument("--work-scale", type=float, default=3.0,
+                    help="工作分辨率放大倍数（先放大再封顶，抑制像素台阶造成的字形抖动；默认 3）")
+    ap.add_argument("--smooth", type=float, default=0.8,
+                    help="骨架半径平滑 sigma（工作像素；默认 0.8，设 0 关闭）")
+    ap.add_argument("--simplify-mm", type=float, default=0.02,
+                    help="多边形简化容差 mm（默认 0.02；顶点过多会让 OpenSCAD 并集失败）")
     ap.add_argument("--thr", type=float, default=None)
     ap.add_argument("--dry-run", action="store_true", help="只量不改")
     args = ap.parse_args()
@@ -347,7 +362,7 @@ def main():
     if src_path.suffix.lower() == ".svg":
         raise SystemExit("输入是 SVG 时请先用 svg_shrink.py 渲染成 PNG 再跑本工具")
 
-    g, mask, thr = load_mask(src_path, args.thr)
+    g, mask, thr = load_mask(src_path, args.thr, args.work_scale)
     mmpp0 = (args.size - 2 * args.margin) / span_px(mask)
     src_rows, src_n = comp_widths(mask, mmpp0)
     src_sum = summarize(src_rows)
@@ -378,7 +393,7 @@ def main():
             ring_geom, info = rebuild_frame(frame, args.frame_mm, mmpp0, petals)
         if ring_geom is None:                 # 兜底：原框保留
             pat |= frame
-    capped = cap_mask(pat, cap_px)
+    capped = cap_mask(pat, cap_px, smooth_sigma=args.smooth)
     if capped.sum() == 0:
         raise SystemExit("封顶后图案为空：cap 太小或阈值有问题")
 
@@ -401,6 +416,14 @@ def main():
     from shapely import affinity
     final = [affinity.translate(affinity.scale(p, xfact=scale, yfact=scale, origin=(0, 0)), ox, oy)
              for p in final]
+    if args.simplify_mm and args.simplify_mm > 0:
+        simp = []
+        for p in final:
+            q = p.simplify(args.simplify_mm, preserve_topology=True)
+            if not q.is_empty:
+                simp.extend(g for g in getattr(q, "geoms", [q]) if isinstance(g, Polygon))
+        if simp:
+            final = simp
 
     mmpp_out = args.size / args.px
     img = rasterize(final, args.px, args.size)
