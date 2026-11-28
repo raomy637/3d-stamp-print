@@ -33,9 +33,10 @@ OUT = REPO / "work" / "_实验" / "raster2svg"
 PY = str(REPO / ".venv" / "Scripts" / "python.exe") if (REPO / ".venv").exists() else sys.executable
 SIZE, MARGIN, PX = 101.6, 1.2, 2000
 MODE = sys.argv[1] if len(sys.argv) > 1 else "green"
-SPEC = 1.0                 # 产品口径：线宽上限 1mm（判据不随参数漂移）
+# 产品口径：线宽上限（判据不随参数漂移）：python tests/test_raster_to_svg.py green 0.8
+SPEC = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
 CAP = 3.0 if MODE == "red" else SPEC
-TAG = "red" if MODE == "red" else "cap1"
+TAG = "red" if MODE == "red" else f"cap{SPEC:g}"
 
 FAILS = []
 

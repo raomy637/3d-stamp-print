@@ -111,6 +111,8 @@ work/
 - 源稿有外框但 `report.json` 的 `frame.reason == "no_frame"` ⇒ 停，修源稿外框（加粗/分离），不交圆底件；monoline 件 `stroke_stats_mm.max > 1.3` ⇒ 停，重画。预览缺部件时以 STL 剖切为准（双环源稿有预览渲染 bug）。
 - `raster_to_svg` 件另加两道：`tests/test_raster_to_svg.py` 六项全 PASS；`out_width` 中位 ≤ cap+0.10 且源稿最细块没被拉粗（用户口径）。花瓣件 `spacing_cv_after`/`peak_cv_after` 必须为 0。
 - 线宽读数以「骨架中位」为准；`report.json` 的 `stroke_stats_mm` 是每块最大宽度，字母交叉鼓包会抬高（house 封顶件报 max 1.65 而实测中位 1.05）。
+- 底座/边框是否镜像不看预览文字朝向猜，按「STL 剖切 vs 源稿图案」覆盖率判定（house 实测：镜像稿 100%、未镜像 61%）；`to_2D()` 坐标基准不可假设。底模正看文字是反的属正常。
+- `raster_to_svg` 出模一律 `--px 2000`：3000px 顶点翻倍会触发 OpenSCAD 并集失败，`cutter/plate` 水密变 False。
 - 失败就停，交付错误信息与已生成文件路径，不强行输出。
 - 不把试模授权当客户审稿；不宣称实物打印、脱模、收缩已验证。
 

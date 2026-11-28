@@ -2,6 +2,14 @@
 
 > 只记「改了什么 + 为什么」。现状看 `README.md`，历史细节留在这里，避免 README 膨胀。
 
+## v11.26 · 2026-11-28 · house 0.8mm 版 + 镜像核验法与 2000px 分辨率教训
+
+- 按用户要求把 cap 从 1.0 改到 **0.8mm** 重做 house：输出骨架中位 **0.81mm**（95 分位 0.82、最粗图案块 0.82），39 块不变、源骨架覆盖 95.4%；base 100×100×5.5mm 水密 24.75cm³，`cutter/plate` 水密。交付 `base_v5/cutter_v5/plate_v5.stl` + `house_08.svg` + `house_08_mirrored.svg`（打印方向）。
+- **分辨率教训**：同一份稿 `--px 3000` 时会触发 OpenSCAD `Not all meshes are volumes!` 并退化为拼接，边框与合盘水密变 False；改 `--px 2000` 即恢复。口径改为「出模一律 2000px」。
+- **镜像核验法**（新增，用于回应"是否按 skill 镜像"）：STL z=4.25 剖切 → 与源稿图案按内容框对齐 → 3px 容差算覆盖率。house 实测：镜像稿 **100%**、未镜像稿 **61%** ⇒ 镜像已生效。结论写进 `manifest.json` 的 `mirror_verified`。
+- 测试脚本支持指定口径：`tests/test_raster_to_svg.py green 0.8`（SPEC 可传参，默认 1.0）。
+- 备注：底模正看文字必然是反的（凸模镜像），SVG/PNG 是"稿件方向"，`*_mirrored.svg` 是"打印方向"，两者都留档。
+
 ## v11.25 · 2026-11-28 · 新增「位图 → SVG 线宽封顶 + 花瓣等径」流程（raster_to_svg）
 
 - 需求：位图稿要「换成 SVG、线条最细处 1mm、文案 1mm、外框花瓣必须一样大」，并明确「原稿本来就比 1mm 细的线不要拉到 1mm」。
